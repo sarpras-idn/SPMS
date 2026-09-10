@@ -39,7 +39,11 @@ const routes: Record<string, () => JSX.Element | null> = {
   '/users': UsersPage,
 };
 
-const SUPER_ADMIN_ROUTES = ['/users', '/dashboard-management', '/import-data'];
+const SUPER_ADMIN_ROUTES = [
+  '/users',
+  '/dashboard-management',
+  '/import-data',
+];
 
 function AppContent() {
   const { path, replace } = useRouter();
@@ -52,12 +56,19 @@ function AppContent() {
       replace('/login');
       return;
     }
+
     if (user && path === '/login') {
       replace('/dashboard');
       return;
     }
-    if (user && user.role !== 'Super Admin' && SUPER_ADMIN_ROUTES.includes(path)) {
+
+    if (
+      user &&
+      user.role !== 'Super Admin' &&
+      SUPER_ADMIN_ROUTES.includes(path)
+    ) {
       replace('/dashboard');
+      return;
     }
   }, [user, path, replace]);
 
@@ -77,11 +88,16 @@ function AppContent() {
         mobileOpen={mobileOpen}
         onCloseMobile={() => setMobileOpen(false)}
       />
+
       <div className="flex-1 flex flex-col min-w-0">
         <Header
           onToggleMobile={() => setMobileOpen(o => !o)}
-          onLogout={() => { logout(); replace('/login'); }}
+          onLogout={() => {
+            logout();
+            replace('/login');
+          }}
         />
+
         <main className="flex-1 p-4 lg:p-6 max-w-[1600px] w-full mx-auto">
           {pageContent}
         </main>
