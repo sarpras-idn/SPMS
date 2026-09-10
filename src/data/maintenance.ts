@@ -1,0 +1,14 @@
+import type { Maintenance } from '@/types';
+
+export const maintenanceSeed: Maintenance[] = [
+  { id: 'mnt-001', nomor: 'MNT-001', tanggal: '2026-08-14', aset: 'AC Asrama Saung 3', lokasi: 'IDN Jonggol Ikhwan', kerusakan: 'Tidak dingin, freon habis', prioritas: 'Sedang', pic: 'Bapak Ari', estimasiBiaya: 350000, status: 'Menunggu', keterangan: 'Menunggu teknisi' },
+  { id: 'mnt-002', nomor: 'MNT-002', tanggal: '2026-08-13', aset: 'Pompa Air Utama', lokasi: 'IDN Sentul', kerusakan: 'Motor mati, tidak naik air', prioritas: 'Tinggi', pic: 'Bapak Yusuf', estimasiBiaya: 1200000, status: 'Diproses', keterangan: 'Sedang dicek teknisi' },
+  { id: 'mnt-003', nomor: 'MNT-003', tanggal: '2026-08-12', aset: 'Lampu Gedung Lt.2', lokasi: 'IDN Jonggol Akhwat', kerusakan: '5 titik lampu mati', prioritas: 'Sedang', pic: 'Ibu Siti', estimasiBiaya: 250000, status: 'Selesai', keterangan: 'Sudah diganti' },
+  { id: 'mnt-004', nomor: 'MNT-004', tanggal: '2026-08-11', aset: 'Printer Epson L3210', lokasi: 'Kantor Yayasan', kerusakan: 'Macet, tinta tidak keluar', prioritas: 'Rendah', pic: 'M. Yusuf', estimasiBiaya: 150000, status: 'Diproses', keterangan: 'Cleaning head' },
+  { id: 'mnt-005', nomor: 'MNT-005', tanggal: '2026-08-10', aset: 'Jaringan Internet Blok B', lokasi: 'IDN Pamijahan', kerusakan: 'Koneksi lambat & putus', prioritas: 'Tinggi', pic: 'Bapak Akim', estimasiBiaya: 0, status: 'Selesai', keterangan: 'Reset & reconfigure' },
+  { id: 'mnt-006', nomor: 'MNT-006', tanggal: '2026-08-09', aset: 'Toilet Lt.1 Putra', lokasi: 'IDN Jonggol Ikhwan', kerusakan: 'Pipa bocor, lantai basah', prioritas: 'Urgent', pic: 'Bapak Hendro', estimasiBiaya: 850000, status: 'Diproses', keterangan: 'Ganti pipa PVC' },
+  { id: 'mnt-007', nomor: 'MNT-007', tanggal: '2026-08-08', aset: 'Pintu Gedung Utama', lokasi: 'IDN Solo', kerusakan: 'Engsel rusak, pintu seret', prioritas: 'Sedang', pic: 'Bapak Hari', estimasiBiaya: 300000, status: 'Menunggu', keterangan: 'Menunggu spare part' },
+  { id: 'mnt-008', nomor: 'MNT-008', tanggal: '2026-08-07', aset: 'Instalasi Listrik Panel A', lokasi: 'IDN Jonggol Ikhwan', kerusakan: 'MCB sering trip', prioritas: 'Urgent', pic: 'Bapak Ari', estimasiBiaya: 600000, status: 'Ditunda', keterangan: 'Menunggu pemadaman' },
+  { id: 'mnt-009', nomor: 'MNT-009', tanggal: '2026-08-06', aset: 'Dispenser Galon Bawah', lokasi: 'Kantor Yayasan', kerusakan: 'Tidak panas, elemen rusak', prioritas: 'Rendah', pic: 'M. Yusuf', estimasiBiaya: 180000, status: 'Selesai', keterangan: 'Ganti elemen pemanas' },
+  { id: 'mnt-010', nomor: 'MNT-010', tanggal: '2026-08-05', aset: 'Proyektor Epson EB-X51', lokasi: 'IDN Pamijahan', kerusakan: 'Lensa buram, warna pudar', prioritas: 'Sedang', pic: 'Bapak Akim', estimasiBiaya: 450000, status: 'Diproses', keterangan: 'Cleaning & kalibrasi' },
+];

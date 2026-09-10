@@ -1,0 +1,28 @@
+import type { RKA } from '@/types';
+
+export const rkaSeed: RKA[] = [
+  { id: 'rka-001', kodeRKA: 'RKA-001', namaProgram: 'Honor Project Manager Pembangunan IDN Jonggol', kategori: 'Proyek Pembangunan', anggaran: 4000000, realisasi: 2000000, keterangan: 'Honor PM bulanan' },
+  { id: 'rka-002', kodeRKA: 'RKA-002', namaProgram: 'Pembayaran Proyek Pembangunan IDN Jonggol', kategori: 'Proyek Pembangunan', anggaran: 100000000, realisasi: 65000000, keterangan: 'Pembayaran termin' },
+  { id: 'rka-003', kodeRKA: 'RKA-003', namaProgram: 'Pembayaran Cicilan Tanah IDN Pamijahan Tahap 1', kategori: 'Tanah', anggaran: 250000000, realisasi: 250000000, keterangan: 'Cicilan tahap 1' },
+  { id: 'rka-004', kodeRKA: 'RKA-004', namaProgram: 'Pengadaan Dispenser Galon Bawah Kantor Yayasan', kategori: 'Program Lainnya', anggaran: 946500, realisasi: 946500, keterangan: 'Selesai' },
+  { id: 'rka-005', kodeRKA: 'RKA-005', namaProgram: '1 Buah Unit Mobil Operasional / Avanza', kategori: 'Kendaraan', anggaran: 250000000, realisasi: 0, keterangan: 'Rencana pengadaan' },
+  { id: 'rka-006', kodeRKA: 'RKA-006', namaProgram: 'Pengadaan AC Asrama Saung Baru - AC Daikin 1 PK', kategori: 'AC', anggaran: 13000000, realisasi: 13000000, keterangan: 'Selesai dipasang' },
+  { id: 'rka-007', kodeRKA: 'RKA-007', namaProgram: 'Pengadaan AC Asrama Saung Baru - AC Daikin 2 PK', kategori: 'AC', anggaran: 19000000, realisasi: 19000000, keterangan: 'Selesai dipasang' },
+  { id: 'rka-008', kodeRKA: 'RKA-008', namaProgram: 'Pengadaan Microphone Wireless Masjid', kategori: 'Program Lainnya', anggaran: 890000, realisasi: 890000, keterangan: 'Selesai' },
+  { id: 'rka-009', kodeRKA: 'RKA-009', namaProgram: 'Reimburse Pengadaan Kebutuhan ATK Kantor Yayasan', kategori: 'Program Lainnya', anggaran: 550000, realisasi: 550000, keterangan: 'Selesai' },
+  { id: 'rka-010', kodeRKA: 'RKA-010', namaProgram: 'Token Listrik Rumah Wisma', kategori: 'Program Lainnya', anggaran: 503500, realisasi: 503500, keterangan: 'Selesai' },
+  { id: 'rka-011', kodeRKA: 'RKA-011', namaProgram: 'Reimburse Token Listrik Rumah Wisma Bulan Juli', kategori: 'Program Lainnya', anggaran: 503500, realisasi: 503500, keterangan: 'Selesai' },
+  { id: 'rka-012', kodeRKA: 'RKA-012', namaProgram: 'Laci Filling Kabinet Kantor Yayasan', kategori: 'Program Lainnya', anggaran: 1450000, realisasi: 1450000, keterangan: 'Selesai' },
+  { id: 'rka-013', kodeRKA: 'RKA-013', namaProgram: 'Dana Awal Pembuatan Halang Rintang Pramuka IDN', kategori: 'Proyek Pembangunan', anggaran: 10000000, realisasi: 5000000, keterangan: 'DP pembuatan' },
+  { id: 'rka-014', kodeRKA: 'RKA-014', namaProgram: 'Reimburse Pengadaan Kebutuhan Wisma', kategori: 'Program Lainnya', anggaran: 387000, realisasi: 387000, keterangan: 'Selesai' },
+  { id: 'rka-015', kodeRKA: 'RKA-015', namaProgram: 'Reimburse Pengadaan Selang Air', kategori: 'Program Lainnya', anggaran: 1170000, realisasi: 1170000, keterangan: 'Selesai' },
+  { id: 'rka-016', kodeRKA: 'RKA-016', namaProgram: 'Biaya Administrasi Transfer', kategori: 'Program Lainnya', anggaran: 2500, realisasi: 2500, keterangan: 'Selesai' },
+  { id: 'rka-017', kodeRKA: 'RKA-017', namaProgram: 'Reimburse Pembelian Bingkai', kategori: 'Program Lainnya', anggaran: 160000, realisasi: 160000, keterangan: 'Selesai' },
+  { id: 'rka-018', kodeRKA: 'RKA-018', namaProgram: 'Pembangunan Jaringan Listrik IDN Ikhwan', kategori: 'Jaringan Listrik', anggaran: 82450000, realisasi: 70000000, keterangan: 'Progress 85%' },
+  { id: 'rka-019', kodeRKA: 'RKA-019', namaProgram: 'Reimburse Pengadaan Barang Untuk Kajian - Karpet', kategori: 'Program Lainnya', anggaran: 290000, realisasi: 290000, keterangan: 'Selesai' },
+  { id: 'rka-020', kodeRKA: 'RKA-020', namaProgram: 'Reimburse Pengadaan Barang Untuk Kajian - Kain Hitam', kategori: 'Program Lainnya', anggaran: 420000, realisasi: 420000, keterangan: 'Selesai' },
+  { id: 'rka-021', kodeRKA: 'RKA-021', namaProgram: 'Reimburse Pengadaan Barang Untuk Kajian - Palet', kategori: 'Program Lainnya', anggaran: 1170000, realisasi: 1170000, keterangan: 'Selesai' },
+  { id: 'rka-022', kodeRKA: 'RKA-022', namaProgram: 'Reimburse Pengadaan Barang Untuk Kajian - Triplek', kategori: 'Program Lainnya', anggaran: 294000, realisasi: 294000, keterangan: 'Selesai' },
+  { id: 'rka-023', kodeRKA: 'RKA-023', namaProgram: 'Reimburse Pengadaan Barang Untuk Kajian - DP Pembelian Sofa', kategori: 'Program Lainnya', anggaran: 1000000, realisasi: 1000000, keterangan: 'Selesai' },
+  { id: 'rka-024', kodeRKA: 'RKA-024', namaProgram: 'Admin Transfer', kategori: 'Program Lainnya', anggaran: 7500, realisasi: 7500, keterangan: 'Selesai' },
+];

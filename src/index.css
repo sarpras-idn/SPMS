@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  html {
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  }
+  body {
+    @apply bg-ink-100 text-ink-900;
+  }
+}
+
+@layer components {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: theme('colors.ink.300') transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-ink-300 rounded-full;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+/* Recharts tooltip overrides */
+.recharts-default-tooltip {
+  border-radius: 12px !important;
+  border: 1px solid theme('colors.ink.200') !important;
+  box-shadow: 0 12px 32px rgba(16,24,40,0.12) !important;
+}
+
+/* Print styles for reports */
+@media print {
+  .no-print { display: none !important; }
+  .print-area { padding: 0 !important; }
+  body { background: white !important; }
+}
