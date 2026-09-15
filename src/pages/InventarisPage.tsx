@@ -11,12 +11,18 @@ import { lokasiAset, kategoriAset } from '@/data/assets';
 type SortKey = keyof Aset;
 
 export function InventarisPage() {
-  const { aset, asetLoading, asetError, asetSource, asetSaving, fetchAset, masterData, masterDataLoading, masterDataError, fetchMasterData, addAset, updateAset, deleteAset, pushToast } = useApp();
+  const {
+    aset, asetLoading, asetError, asetSource, asetSaving, fetchAset,
+    masterData, masterDataLoading, masterDataError, fetchMasterData,
+    branches, areas, buildings, floors, rooms, locationsLoading, locationsError, fetchLocations,
+    addAset, updateAset, deleteAset, pushToast,
+  } = useApp();
 
   useEffect(() => {
     fetchAset();
     fetchMasterData();
-  }, [fetchAset, fetchMasterData]);
+    fetchLocations();
+  }, [fetchAset, fetchMasterData, fetchLocations]);
   const [search, setSearch] = useState('');
   const [filterKategori, setFilterKategori] = useState('');
   const [filterLokasi, setFilterLokasi] = useState('');
@@ -233,6 +239,14 @@ export function InventarisPage() {
           masterData={masterData}
           masterDataLoading={masterDataLoading}
           masterDataError={masterDataError}
+          branches={branches}
+          areas={areas}
+          buildings={buildings}
+          floors={floors}
+          rooms={rooms}
+          locationsLoading={locationsLoading}
+          locationsError={locationsError}
+          onRetryLocations={fetchLocations}
           onClose={() => { setModalOpen(false); setEditing(null); }}
           onSave={handleSave}
         />
@@ -296,21 +310,54 @@ export function InventarisPage() {
   );
 }
 
-function AsetFormModal({ editing, saving, masterData, masterDataLoading, masterDataError, onClose, onSave }: {
-  editing: Aset | null;
-  saving: boolean;
-  masterData: MasterData | null;
-  masterDataLoading: boolean;
-  masterDataError: string | null;
-  onClose: () => void;
-  onSave: (data: Omit<Aset, 'id'>) => void;
+function LocationSelect({ label, value, onChange, options, disabled, required }: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: { value: string; label: string }[];
+  disabled?: boolean;
+  required?: boolean;
+}) {
+  return (
+    <div>
+      <label className="block text-xs font-semibold text-ink-600 mb-1.5">
+        {label}{required ? ' *' : ''}
+      </label>
+      <select
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        disabled={disabled}
+        className="w-full px-3 py-2.5 rounded-lg border border-ink-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:bg-ink-50 disabled:text-ink-400"
+      >
+        <option value="">Pilih {label}</option>
+        {options.map(option => (
+          <option key={option.value} value={option.value}>{option.label}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function AsetFormModal({
+  editing, saving, masterData, masterDataLoading, masterDataError,
+  branches, areas, buildings, floors, rooms, locationsLoading, locationsError, onRetryLocations,
+  onClose, onSave,
+}: {
+  editing: Aset | null; saving: boolean; masterData: MasterData | null;
+  masterDataLoading: boolean; masterDataError: string | null;
+  branches: { id: string; kodeCabang: string; namaCabang: string; status: string }[];
+  areas: { id: string; branchId: string; kodeArea: string; namaArea: string; status: string }[];
+  buildings: { id: string; areaId: string; kodeBangunan: string; namaBangunan: string; tipeBangunan: string; status: string }[];
+  floors: { id: string; buildingId: string; kodeLantai: string; namaLantai: string; urutan: number; status: string }[];
+  rooms: { id: string; floorId: string; kodeRuangan: string; namaRuangan: string; tipeRuangan: string; status: string }[];
+  locationsLoading: boolean; locationsError: string | null; onRetryLocations: () => Promise<void>;
+  onClose: () => void; onSave: (data: Omit<Aset, 'id'>) => void;
 }) {
   const withCurrent = (opts: string[], current?: string): string[] =>
     current && !opts.includes(current) ? [...opts, current] : opts;
 
   const kategoriOptions = withCurrent(masterData?.Kategori ?? [...kategoriAset], editing?.kategori);
   const subKategoriOptions = withCurrent(masterData?.['Sub Kategori'] ?? [], editing?.subKategori);
-  const lokasiOptions = withCurrent(masterData?.Lokasi ?? [...lokasiAset], editing?.lokasi);
   const picOptions = withCurrent(masterData?.PIC ?? [], editing?.pic);
   const satuanOptions = withCurrent(masterData?.Satuan ?? [], editing?.satuan);
   const kondisiOpts = withCurrent(masterData?.Kondisi ?? [], editing?.kondisi);
@@ -319,26 +366,46 @@ function AsetFormModal({ editing, saving, masterData, masterDataLoading, masterD
 
   const [form, setForm] = useState<Omit<Aset, 'id'>>({
     kodeAset: editing?.kodeAset ?? `AST-${Date.now().toString().slice(-6)}`,
-    namaAset: editing?.namaAset ?? '',
-    kategori: editing?.kategori ?? kategoriOptions[0] ?? '',
-    subKategori: editing?.subKategori ?? '',
-    merek: editing?.merek ?? '',
-    tipe: editing?.tipe ?? '',
-    nomorSeri: editing?.nomorSeri ?? '',
-    lokasi: editing?.lokasi ?? lokasiOptions[0] ?? '',
-    pic: editing?.pic ?? '',
-    jumlah: editing?.jumlah ?? 1,
-    satuan: editing?.satuan ?? satuanOptions[0] ?? 'Unit',
-    kondisi: editing?.kondisi ?? kondisiOpts[0] ?? 'Baik',
-    statusAset: editing?.statusAset ?? statusOpts[0] ?? 'Aktif',
+    namaAset: editing?.namaAset ?? '', kategori: editing?.kategori ?? kategoriOptions[0] ?? '',
+    subKategori: editing?.subKategori ?? '', merek: editing?.merek ?? '', tipe: editing?.tipe ?? '',
+    nomorSeri: editing?.nomorSeri ?? '', lokasi: editing?.lokasi ?? '',
+    branchId: editing?.branchId ?? '', areaId: editing?.areaId ?? '', buildingId: editing?.buildingId ?? '',
+    floorId: editing?.floorId ?? '', roomId: editing?.roomId ?? '', pic: editing?.pic ?? '',
+    jumlah: editing?.jumlah ?? 1, satuan: editing?.satuan ?? satuanOptions[0] ?? 'Unit',
+    kondisi: editing?.kondisi ?? kondisiOpts[0] ?? 'Baik', statusAset: editing?.statusAset ?? statusOpts[0] ?? 'Aktif',
     tahunPembelian: editing?.tahunPembelian ?? new Date().getFullYear(),
     tanggalPembelian: (editing?.tanggalPembelian ?? new Date().toISOString()).slice(0, 10),
-    nilaiAset: editing?.nilaiAset ?? 0,
-    sumberPerolehan: editing?.sumberPerolehan ?? sumberOpts[0] ?? 'Pembelian',
+    nilaiAset: editing?.nilaiAset ?? 0, sumberPerolehan: editing?.sumberPerolehan ?? sumberOpts[0] ?? 'Pembelian',
     keterangan: editing?.keterangan ?? '',
   });
 
+  const selectedAreas = areas.filter(a => a.branchId === form.branchId && a.status === 'Aktif');
+  const selectedBuildings = buildings.filter(b => b.areaId === form.areaId && b.status === 'Aktif');
+  const selectedFloors = floors.filter(f => f.buildingId === form.buildingId && f.status === 'Aktif').sort((a, b) => a.urutan - b.urutan);
+  const selectedRooms = rooms.filter(r => r.floorId === form.floorId && r.status === 'Aktif');
+
+  useEffect(() => {
+    if (!form.branchId && editing?.lokasi && branches.length) {
+      const branch = branches.find(b => editing.lokasi.toLowerCase().includes(b.namaCabang.toLowerCase()));
+      if (branch) setForm(f => ({ ...f, branchId: branch.id }));
+    }
+  }, [branches, editing, form.branchId]);
+
+  useEffect(() => {
+    const branch = branches.find(b => b.id === form.branchId);
+    const area = areas.find(a => a.id === form.areaId);
+    const building = buildings.find(b => b.id === form.buildingId);
+    const floor = floors.find(f => f.id === form.floorId);
+    const room = rooms.find(r => r.id === form.roomId);
+    const label = [branch?.namaCabang, area?.namaArea, building?.namaBangunan, floor?.namaLantai, room?.namaRuangan].filter(Boolean).join(' / ');
+    if (label && label !== form.lokasi) setForm(f => ({ ...f, lokasi: label }));
+  }, [form.branchId, form.areaId, form.buildingId, form.floorId, form.roomId, branches, areas, buildings, floors, rooms]);
+
   const set = (key: keyof typeof form, val: string | number) => setForm(f => ({ ...f, [key]: val }));
+  const setBranch = (value: string) => setForm(f => ({ ...f, branchId: value, areaId: '', buildingId: '', floorId: '', roomId: '' }));
+  const setArea = (value: string) => setForm(f => ({ ...f, areaId: value, buildingId: '', floorId: '', roomId: '' }));
+  const setBuilding = (value: string) => setForm(f => ({ ...f, buildingId: value, floorId: '', roomId: '' }));
+  const setFloor = (value: string) => setForm(f => ({ ...f, floorId: value, roomId: '' }));
 
   const handleSubmit = () => {
     if (!form.namaAset || !form.kodeAset) return;
@@ -381,7 +448,22 @@ function AsetFormModal({ editing, saving, masterData, masterDataLoading, masterD
         <Input label="Merek/Jenis" value={form.merek} onChange={v => set('merek', v)} />
         <Input label="Tipe/Spesifikasi" value={form.tipe} onChange={v => set('tipe', v)} />
         <Input label="Nomor Seri" value={form.nomorSeri} onChange={v => set('nomorSeri', v)} />
-        <Input label="Lokasi" value={form.lokasi} onChange={v => set('lokasi', v)} options={lokasiOptions} />
+        <div className="col-span-2">
+          <div className="grid grid-cols-2 gap-4">
+            <LocationSelect label="Cabang" value={form.branchId} onChange={setBranch} options={branches.filter(b => b.status === 'Aktif').map(b => ({ value: b.id, label: `${b.kodeCabang} — ${b.namaCabang}` }))} disabled={locationsLoading} required />
+            <LocationSelect label="Unit / Area" value={form.areaId} onChange={setArea} options={selectedAreas.map(a => ({ value: a.id, label: `${a.kodeArea} — ${a.namaArea}` }))} disabled={!form.branchId || locationsLoading} required />
+            <LocationSelect label="Bangunan" value={form.buildingId} onChange={setBuilding} options={selectedBuildings.map(b => ({ value: b.id, label: `${b.kodeBangunan} — ${b.namaBangunan}` }))} disabled={!form.areaId || locationsLoading} required />
+            <LocationSelect label="Lantai" value={form.floorId} onChange={setFloor} options={selectedFloors.map(f => ({ value: f.id, label: `${f.kodeLantai} — ${f.namaLantai}` }))} disabled={!form.buildingId || locationsLoading} required />
+            <LocationSelect label="Ruangan" value={form.roomId} onChange={v => set('roomId', v)} options={selectedRooms.map(r => ({ value: r.id, label: `${r.kodeRuangan} — ${r.namaRuangan}` }))} disabled={!form.floorId || locationsLoading} />
+          </div>
+          {locationsLoading && <p className="text-xs text-ink-400 mt-2">Memuat struktur lokasi...</p>}
+          {locationsError && (
+            <div className="flex items-center justify-between gap-3 mt-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200">
+              <p className="text-xs text-amber-700">{locationsError}</p>
+              <button type="button" onClick={() => onRetryLocations()} className="text-xs font-semibold text-amber-700 hover:text-amber-900">Coba lagi</button>
+            </div>
+          )}
+        </div>
         <Input label="PIC" value={form.pic} onChange={v => set('pic', v)} options={picOptions} />
         <div className="grid grid-cols-2 gap-3">
           <Input label="Jumlah" type="number" value={form.jumlah} onChange={v => set('jumlah', Number(v))} />

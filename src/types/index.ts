@@ -12,6 +12,11 @@ export interface Aset {
   tipe: string;
   nomorSeri: string;
   lokasi: string;
+  branchId: string;
+  areaId: string;
+  buildingId: string;
+  floorId: string;
+  roomId: string;
   pic: string;
   jumlah: number;
   satuan: string;
