@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Plus, Search, Edit2, Trash2, Eye, Filter, ArrowUpDown, AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, Eye, ArrowUpDown, AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
 import { useApp } from '@/hooks/useAppStore';
 import { PageHeader, Card, Button, Input, Modal, ConfirmDialog, EmptyState } from '@/components/ui';
 import { Badge, statusBadge } from '@/components/ui/Badge';
@@ -23,9 +23,11 @@ export function InventarisPage() {
     fetchMasterData();
     fetchLocations();
   }, [fetchAset, fetchMasterData, fetchLocations]);
+
   const [search, setSearch] = useState('');
-  const [filterKategori, setFilterKategori] = useState('');
+  const [filterCabang, setFilterCabang] = useState('');
   const [filterLokasi, setFilterLokasi] = useState('');
+  const [filterKategori, setFilterKategori] = useState('');
   const [filterKondisi, setFilterKondisi] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('kodeAset');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
@@ -42,29 +44,53 @@ export function InventarisPage() {
         a.kodeAset.toLowerCase().includes(search.toLowerCase()) ||
         a.merek.toLowerCase().includes(search.toLowerCase()) ||
         a.nomorSeri.toLowerCase().includes(search.toLowerCase());
-      const matchKategori = !filterKategori || a.kategori === filterKategori;
+
+      const matchCabang = !filterCabang || a.branchId === filterCabang;
       const matchLokasi = !filterLokasi || a.lokasi === filterLokasi;
+      const matchKategori = !filterKategori || a.kategori === filterKategori;
       const matchKondisi = !filterKondisi || a.kondisi === filterKondisi;
-      return matchSearch && matchKategori && matchLokasi && matchKondisi;
+
+      return matchSearch && matchCabang && matchLokasi && matchKategori && matchKondisi;
     });
+
     result = [...result].sort((a, b) => {
-      const av = a[sortKey]; const bv = b[sortKey];
-      if (typeof av === 'number' && typeof bv === 'number') return sortDir === 'asc' ? av - bv : bv - av;
+      const av = a[sortKey];
+      const bv = b[sortKey];
+
+      if (typeof av === 'number' && typeof bv === 'number') {
+        return sortDir === 'asc' ? av - bv : bv - av;
+      }
+
       return sortDir === 'asc'
         ? String(av).localeCompare(String(bv))
         : String(bv).localeCompare(String(av));
     });
+
     return result;
-  }, [aset, search, filterKategori, filterLokasi, filterKondisi, sortKey, sortDir]);
+  }, [
+    aset,
+    search,
+    filterCabang,
+    filterLokasi,
+    filterKategori,
+    filterKondisi,
+    sortKey,
+    sortDir,
+  ]);
 
   const toggleSort = (key: SortKey) => {
-    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-    else { setSortKey(key); setSortDir('asc'); }
+    if (sortKey === key) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
   };
 
   const handleSave = async (data: Omit<Aset, 'id'>) => {
     if (editing) {
       const err = await updateAset(editing.id, data);
+
       if (err) {
         pushToast(`Gagal memperbarui aset: ${err}`, 'error');
       } else {
@@ -74,6 +100,7 @@ export function InventarisPage() {
       }
     } else {
       const err = await addAset(data);
+
       if (err) {
         pushToast(`Gagal menambahkan aset: ${err}`, 'error');
       } else {
@@ -99,9 +126,14 @@ export function InventarisPage() {
 
       {/* Filters */}
       <Card className="mb-4 p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+
+          {/* Search */}
           <div className="relative">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-300" />
+            <Search
+              size={16}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-300"
+            />
             <input
               type="text"
               value={search}
@@ -110,21 +142,65 @@ export function InventarisPage() {
               className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-ink-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
             />
           </div>
-          <select value={filterKategori} onChange={e => setFilterKategori(e.target.value)}
-            className="px-3 py-2.5 rounded-lg border border-ink-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
-            <option value="">Semua Kategori</option>
-            {kategoriAset.map(k => <option key={k} value={k}>{k}</option>)}
+
+          {/* Cabang */}
+          <select
+            value={filterCabang}
+            onChange={e => setFilterCabang(e.target.value)}
+            className="px-3 py-2.5 rounded-lg border border-ink-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+          >
+            <option value="">Semua Cabang</option>
+            {branches
+              .filter(branch => branch.status === 'Aktif')
+              .map(branch => (
+                <option key={branch.id} value={branch.id}>
+                  {branch.namaCabang}
+                </option>
+              ))}
           </select>
-          <select value={filterLokasi} onChange={e => setFilterLokasi(e.target.value)}
-            className="px-3 py-2.5 rounded-lg border border-ink-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
+
+          {/* Lokasi */}
+          <select
+            value={filterLokasi}
+            onChange={e => setFilterLokasi(e.target.value)}
+            className="px-3 py-2.5 rounded-lg border border-ink-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+          >
             <option value="">Semua Lokasi</option>
-            {lokasiAset.map(l => <option key={l} value={l}>{l}</option>)}
+            {(masterData?.Lokasi ?? lokasiAset).map(lokasi => (
+              <option key={lokasi} value={lokasi}>
+                {lokasi}
+              </option>
+            ))}
           </select>
-          <select value={filterKondisi} onChange={e => setFilterKondisi(e.target.value)}
-            className="px-3 py-2.5 rounded-lg border border-ink-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
+
+          {/* Kategori */}
+          <select
+            value={filterKategori}
+            onChange={e => setFilterKategori(e.target.value)}
+            className="px-3 py-2.5 rounded-lg border border-ink-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+          >
+            <option value="">Semua Kategori</option>
+            {(masterData?.Kategori ?? kategoriAset).map(kategori => (
+              <option key={kategori} value={kategori}>
+                {kategori}
+              </option>
+            ))}
+          </select>
+
+          {/* Kondisi */}
+          <select
+            value={filterKondisi}
+            onChange={e => setFilterKondisi(e.target.value)}
+            className="px-3 py-2.5 rounded-lg border border-ink-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+          >
             <option value="">Semua Kondisi</option>
-            {(masterData?.Kondisi ?? []).map(k => <option key={k} value={k}>{k}</option>)}
+            {(masterData?.Kondisi ?? []).map(kondisi => (
+              <option key={kondisi} value={kondisi}>
+                {kondisi}
+              </option>
+            ))}
           </select>
+
         </div>
       </Card>
 
@@ -133,7 +209,9 @@ export function InventarisPage() {
         <div className="mb-4 flex items-center gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200">
           <AlertCircle size={20} className="text-amber-600 shrink-0" />
           <div className="flex-1">
-            <p className="text-sm font-semibold text-amber-800">Gagal memuat data dari server</p>
+            <p className="text-sm font-semibold text-amber-800">
+              Gagal memuat data dari server
+            </p>
             <p className="text-xs text-amber-600 mt-0.5">
               Menampilkan data demo sebagai fallback. Error: {asetError}
             </p>
@@ -163,73 +241,178 @@ export function InventarisPage() {
 
       {/* Table */}
       {!asetLoading && (
-      <Card className="overflow-hidden">
-        <div className="overflow-x-auto scrollbar-thin">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-ink-100 bg-ink-50/50">
-                <th className="text-left px-4 py-3 text-xs font-bold text-ink-500 uppercase cursor-pointer hover:text-ink-700" onClick={() => toggleSort('kodeAset')}>
-                  <span className="flex items-center gap-1">Kode <ArrowUpDown size={11} /></span>
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-bold text-ink-500 uppercase cursor-pointer hover:text-ink-700" onClick={() => toggleSort('namaAset')}>
-                  <span className="flex items-center gap-1">Nama Aset <ArrowUpDown size={11} /></span>
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-bold text-ink-500 uppercase">Kategori</th>
-                <th className="text-left px-4 py-3 text-xs font-bold text-ink-500 uppercase">Lokasi</th>
-                <th className="text-center px-4 py-3 text-xs font-bold text-ink-500 uppercase">Jumlah</th>
-                <th className="text-left px-4 py-3 text-xs font-bold text-ink-500 uppercase">Kondisi</th>
-                <th className="text-left px-4 py-3 text-xs font-bold text-ink-500 uppercase">Status</th>
-                <th className="text-right px-4 py-3 text-xs font-bold text-ink-500 uppercase">Nilai Aset</th>
-                <th className="text-center px-4 py-3 text-xs font-bold text-ink-500 uppercase">Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 ? (
-                <tr><td colSpan={9}><EmptyState message="Tidak ada data aset ditemukan" /></td></tr>
-              ) : filtered.map(a => {
-                const kondisiBadge = statusBadge(a.kondisi);
-                const statusBdg = statusBadge(a.statusAset);
-                return (
-                  <tr key={a.id} className="border-b border-ink-50 hover:bg-ink-50/30 transition-colors">
-                    <td className="px-4 py-3 font-mono text-xs text-ink-600">{a.kodeAset}</td>
-                    <td className="px-4 py-3">
-                      <p className="font-semibold text-ink-800">{a.namaAset}</p>
-                      <p className="text-xs text-ink-400">{a.merek} {a.tipe}</p>
-                    </td>
-                    <td className="px-4 py-3 text-ink-600">{a.kategori}</td>
-                    <td className="px-4 py-3 text-ink-600 text-xs">{a.lokasi}</td>
-                    <td className="px-4 py-3 text-center font-semibold text-ink-800">{a.jumlah} {a.satuan}</td>
-                    <td className="px-4 py-3"><Badge variant={kondisiBadge.variant}>{a.kondisi}</Badge></td>
-                    <td className="px-4 py-3"><Badge variant={statusBdg.variant}>{a.statusAset}</Badge></td>
-                    <td className="px-4 py-3 text-right font-semibold text-ink-800 whitespace-nowrap">{formatRupiah(a.nilaiAset)}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-center gap-1">
-                        <button onClick={() => { setDetail(a); setDetailOpen(true); }} className="p-1.5 rounded-lg text-ink-400 hover:bg-blue-50 hover:text-blue-600 transition-colors" title="Detail">
-                          <Eye size={15} />
-                        </button>
-                        <button onClick={() => { setEditing(a); setModalOpen(true); }} className="p-1.5 rounded-lg text-ink-400 hover:bg-brand-50 hover:text-brand-600 transition-colors" title="Edit">
-                          <Edit2 size={15} />
-                        </button>
-                        <button onClick={() => setDeleteId(a.id)} className="p-1.5 rounded-lg text-ink-400 hover:bg-red-50 hover:text-red-600 transition-colors" title="Hapus">
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
+        <Card className="overflow-hidden">
+          <div className="overflow-x-auto scrollbar-thin">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-ink-100 bg-ink-50/50">
+                  <th
+                    className="text-left px-4 py-3 text-xs font-bold text-ink-500 uppercase cursor-pointer hover:text-ink-700"
+                    onClick={() => toggleSort('kodeAset')}
+                  >
+                    <span className="flex items-center gap-1">
+                      Kode <ArrowUpDown size={11} />
+                    </span>
+                  </th>
+
+                  <th
+                    className="text-left px-4 py-3 text-xs font-bold text-ink-500 uppercase cursor-pointer hover:text-ink-700"
+                    onClick={() => toggleSort('namaAset')}
+                  >
+                    <span className="flex items-center gap-1">
+                      Nama Aset <ArrowUpDown size={11} />
+                    </span>
+                  </th>
+
+                  <th className="text-left px-4 py-3 text-xs font-bold text-ink-500 uppercase">
+                    Kategori
+                  </th>
+
+                  <th className="text-left px-4 py-3 text-xs font-bold text-ink-500 uppercase">
+                    Lokasi
+                  </th>
+
+                  <th className="text-center px-4 py-3 text-xs font-bold text-ink-500 uppercase">
+                    Jumlah
+                  </th>
+
+                  <th className="text-left px-4 py-3 text-xs font-bold text-ink-500 uppercase">
+                    Kondisi
+                  </th>
+
+                  <th className="text-left px-4 py-3 text-xs font-bold text-ink-500 uppercase">
+                    Status
+                  </th>
+
+                  <th className="text-right px-4 py-3 text-xs font-bold text-ink-500 uppercase">
+                    Nilai Aset
+                  </th>
+
+                  <th className="text-center px-4 py-3 text-xs font-bold text-ink-500 uppercase">
+                    Aksi
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={9}>
+                      <EmptyState message="Tidak ada data aset ditemukan" />
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        <div className="px-4 py-3 border-t border-ink-100 flex items-center justify-between text-xs text-ink-500">
-          <span>Menampilkan {filtered.length} dari {aset.length} aset</span>
-          {asetSource && (
-            <span className={`font-medium ${asetSource === 'api' ? 'text-emerald-600' : 'text-amber-600'}`}>
-              {asetSource === 'api' ? 'Data dari server' : 'Data demo (fallback)'}
+                ) : (
+                  filtered.map(a => {
+                    const kondisiBadge = statusBadge(a.kondisi);
+                    const statusBdg = statusBadge(a.statusAset);
+
+                    return (
+                      <tr
+                        key={a.id}
+                        className="border-b border-ink-50 hover:bg-ink-50/30 transition-colors"
+                      >
+                        <td className="px-4 py-3 font-mono text-xs text-ink-600">
+                          {a.kodeAset}
+                        </td>
+
+                        <td className="px-4 py-3">
+                          <p className="font-semibold text-ink-800">
+                            {a.namaAset}
+                          </p>
+                          <p className="text-xs text-ink-400">
+                            {a.merek} {a.tipe}
+                          </p>
+                        </td>
+
+                        <td className="px-4 py-3 text-ink-600">
+                          {a.kategori}
+                        </td>
+
+                        <td className="px-4 py-3 text-ink-600 text-xs">
+                          {a.lokasi}
+                        </td>
+
+                        <td className="px-4 py-3 text-center font-semibold text-ink-800">
+                          {a.jumlah} {a.satuan}
+                        </td>
+
+                        <td className="px-4 py-3">
+                          <Badge variant={kondisiBadge.variant}>
+                            {a.kondisi}
+                          </Badge>
+                        </td>
+
+                        <td className="px-4 py-3">
+                          <Badge variant={statusBdg.variant}>
+                            {a.statusAset}
+                          </Badge>
+                        </td>
+
+                        <td className="px-4 py-3 text-right font-semibold text-ink-800 whitespace-nowrap">
+                          {formatRupiah(a.nilaiAset)}
+                        </td>
+
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              onClick={() => {
+                                setDetail(a);
+                                setDetailOpen(true);
+                              }}
+                              className="p-1.5 rounded-lg text-ink-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                              title="Detail"
+                            >
+                              <Eye size={15} />
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                setEditing(a);
+                                setModalOpen(true);
+                              }}
+                              className="p-1.5 rounded-lg text-ink-400 hover:bg-brand-50 hover:text-brand-600 transition-colors"
+                              title="Edit"
+                            >
+                              <Edit2 size={15} />
+                            </button>
+
+                            <button
+                              onClick={() => setDeleteId(a.id)}
+                              className="p-1.5 rounded-lg text-ink-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                              title="Hapus"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="px-4 py-3 border-t border-ink-100 flex items-center justify-between text-xs text-ink-500">
+            <span>
+              Menampilkan {filtered.length} dari {aset.length} aset
             </span>
-          )}
-        </div>
-      </Card>
+
+            {asetSource && (
+              <span
+                className={`font-medium ${
+                  asetSource === 'api'
+                    ? 'text-emerald-600'
+                    : 'text-amber-600'
+                }`}
+              >
+                {asetSource === 'api'
+                  ? 'Data dari server'
+                  : 'Data demo (fallback)'}
+              </span>
+            )}
+          </div>
+        </Card>
       )}
 
       {modalOpen && (
@@ -247,15 +430,29 @@ export function InventarisPage() {
           locationsLoading={locationsLoading}
           locationsError={locationsError}
           onRetryLocations={fetchLocations}
-          onClose={() => { setModalOpen(false); setEditing(null); }}
+          onClose={() => {
+            setModalOpen(false);
+            setEditing(null);
+          }}
           onSave={handleSave}
         />
       )}
 
       {detailOpen && detail && (
-        <Modal open={detailOpen} onClose={() => setDetailOpen(false)} title="Detail Aset" size="lg"
+        <Modal
+          open={detailOpen}
+          onClose={() => setDetailOpen(false)}
+          title="Detail Aset"
+          size="lg"
           subtitle={detail.kodeAset}
-          footer={<Button variant="secondary" onClick={() => setDetailOpen(false)}>Tutup</Button>}
+          footer={
+            <Button
+              variant="secondary"
+              onClick={() => setDetailOpen(false)}
+            >
+              Tutup
+            </Button>
+          }
         >
           <div className="grid grid-cols-2 gap-4">
             {[
@@ -276,14 +473,26 @@ export function InventarisPage() {
               ['Nilai Aset', formatRupiah(detail.nilaiAset)],
               ['Sumber Perolehan', detail.sumberPerolehan],
             ].map(([label, value]) => (
-              <div key={label} className="bg-ink-50/50 rounded-lg px-3 py-2.5">
-                <p className="text-[10px] font-bold text-ink-400 uppercase tracking-wide">{label}</p>
-                <p className="text-sm font-semibold text-ink-800 mt-0.5">{value}</p>
+              <div
+                key={label}
+                className="bg-ink-50/50 rounded-lg px-3 py-2.5"
+              >
+                <p className="text-[10px] font-bold text-ink-400 uppercase tracking-wide">
+                  {label}
+                </p>
+                <p className="text-sm font-semibold text-ink-800 mt-0.5">
+                  {value}
+                </p>
               </div>
             ))}
+
             <div className="col-span-2 bg-ink-50/50 rounded-lg px-3 py-2.5">
-              <p className="text-[10px] font-bold text-ink-400 uppercase tracking-wide">Keterangan</p>
-              <p className="text-sm text-ink-700 mt-0.5">{detail.keterangan || '-'}</p>
+              <p className="text-[10px] font-bold text-ink-400 uppercase tracking-wide">
+                Keterangan
+              </p>
+              <p className="text-sm text-ink-700 mt-0.5">
+                {detail.keterangan || '-'}
+              </p>
             </div>
           </div>
         </Modal>
@@ -294,12 +503,15 @@ export function InventarisPage() {
         onClose={() => setDeleteId(null)}
         onConfirm={async () => {
           if (!deleteId) return;
+
           const err = await deleteAset(deleteId);
+
           if (err) {
             pushToast(`Gagal menghapus aset: ${err}`, 'error');
           } else {
             pushToast('Data aset berhasil dihapus.');
           }
+
           setDeleteId(null);
         }}
         title="Hapus Aset"
@@ -310,7 +522,14 @@ export function InventarisPage() {
   );
 }
 
-function LocationSelect({ label, value, onChange, options, disabled, required }: {
+function LocationSelect({
+  label,
+  value,
+  onChange,
+  options,
+  disabled,
+  required,
+}: {
   label: string;
   value: string;
   onChange: (value: string) => void;
@@ -323,6 +542,7 @@ function LocationSelect({ label, value, onChange, options, disabled, required }:
       <label className="block text-xs font-semibold text-ink-600 mb-1.5">
         {label}{required ? ' *' : ''}
       </label>
+
       <select
         value={value}
         onChange={e => onChange(e.target.value)}
@@ -330,8 +550,11 @@ function LocationSelect({ label, value, onChange, options, disabled, required }:
         className="w-full px-3 py-2.5 rounded-lg border border-ink-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:bg-ink-50 disabled:text-ink-400"
       >
         <option value="">Pilih {label}</option>
+
         {options.map(option => (
-          <option key={option.value} value={option.value}>{option.label}</option>
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
         ))}
       </select>
     </div>
@@ -339,73 +562,285 @@ function LocationSelect({ label, value, onChange, options, disabled, required }:
 }
 
 function AsetFormModal({
-  editing, saving, masterData, masterDataLoading, masterDataError,
-  branches, areas, buildings, floors, rooms, locationsLoading, locationsError, onRetryLocations,
-  onClose, onSave,
+  editing,
+  saving,
+  masterData,
+  masterDataLoading,
+  masterDataError,
+  branches,
+  areas,
+  buildings,
+  floors,
+  rooms,
+  locationsLoading,
+  locationsError,
+  onRetryLocations,
+  onClose,
+  onSave,
 }: {
-  editing: Aset | null; saving: boolean; masterData: MasterData | null;
-  masterDataLoading: boolean; masterDataError: string | null;
-  branches: { id: string; kodeCabang: string; namaCabang: string; status: string }[];
-  areas: { id: string; branchId: string; kodeArea: string; namaArea: string; status: string }[];
-  buildings: { id: string; areaId: string; kodeBangunan: string; namaBangunan: string; tipeBangunan: string; status: string }[];
-  floors: { id: string; buildingId: string; kodeLantai: string; namaLantai: string; urutan: number; status: string }[];
-  rooms: { id: string; floorId: string; kodeRuangan: string; namaRuangan: string; tipeRuangan: string; status: string }[];
-  locationsLoading: boolean; locationsError: string | null; onRetryLocations: () => Promise<void>;
-  onClose: () => void; onSave: (data: Omit<Aset, 'id'>) => void;
+  editing: Aset | null;
+  saving: boolean;
+  masterData: MasterData | null;
+  masterDataLoading: boolean;
+  masterDataError: string | null;
+  branches: {
+    id: string;
+    kodeCabang: string;
+    namaCabang: string;
+    status: string;
+  }[];
+  areas: {
+    id: string;
+    branchId: string;
+    kodeArea: string;
+    namaArea: string;
+    status: string;
+  }[];
+  buildings: {
+    id: string;
+    areaId: string;
+    kodeBangunan: string;
+    namaBangunan: string;
+    tipeBangunan: string;
+    status: string;
+  }[];
+  floors: {
+    id: string;
+    buildingId: string;
+    kodeLantai: string;
+    namaLantai: string;
+    urutan: number;
+    status: string;
+  }[];
+  rooms: {
+    id: string;
+    floorId: string;
+    kodeRuangan: string;
+    namaRuangan: string;
+    tipeRuangan: string;
+    status: string;
+  }[];
+  locationsLoading: boolean;
+  locationsError: string | null;
+  onRetryLocations: () => Promise<void>;
+  onClose: () => void;
+  onSave: (data: Omit<Aset, 'id'>) => void;
 }) {
-  const withCurrent = (opts: string[], current?: string): string[] =>
-    current && !opts.includes(current) ? [...opts, current] : opts;
+  const withCurrent = (
+    opts: string[],
+    current?: string
+  ): string[] =>
+    current && !opts.includes(current)
+      ? [...opts, current]
+      : opts;
 
-  const kategoriOptions = withCurrent(masterData?.Kategori ?? [...kategoriAset], editing?.kategori);
-  const subKategoriOptions = withCurrent(masterData?.['Sub Kategori'] ?? [], editing?.subKategori);
-  const picOptions = withCurrent(masterData?.PIC ?? [], editing?.pic);
-  const satuanOptions = withCurrent(masterData?.Satuan ?? [], editing?.satuan);
-  const kondisiOpts = withCurrent(masterData?.Kondisi ?? [], editing?.kondisi);
-  const statusOpts = withCurrent(masterData?.['Status Aset'] ?? [], editing?.statusAset);
-  const sumberOpts = withCurrent(masterData?.['Sumber Perolehan'] ?? [], editing?.sumberPerolehan);
+  const kategoriOptions = withCurrent(
+    masterData?.Kategori ?? [...kategoriAset],
+    editing?.kategori
+  );
+
+  const subKategoriOptions = withCurrent(
+    masterData?.['Sub Kategori'] ?? [],
+    editing?.subKategori
+  );
+
+  const picOptions = withCurrent(
+    masterData?.PIC ?? [],
+    editing?.pic
+  );
+
+  const satuanOptions = withCurrent(
+    masterData?.Satuan ?? [],
+    editing?.satuan
+  );
+
+  const kondisiOpts = withCurrent(
+    masterData?.Kondisi ?? [],
+    editing?.kondisi
+  );
+
+  const statusOpts = withCurrent(
+    masterData?.['Status Aset'] ?? [],
+    editing?.statusAset
+  );
+
+  const sumberOpts = withCurrent(
+    masterData?.['Sumber Perolehan'] ?? [],
+    editing?.sumberPerolehan
+  );
 
   const [form, setForm] = useState<Omit<Aset, 'id'>>({
     kodeAset: editing?.kodeAset ?? `AST-${Date.now().toString().slice(-6)}`,
-    namaAset: editing?.namaAset ?? '', kategori: editing?.kategori ?? kategoriOptions[0] ?? '',
-    subKategori: editing?.subKategori ?? '', merek: editing?.merek ?? '', tipe: editing?.tipe ?? '',
-    nomorSeri: editing?.nomorSeri ?? '', lokasi: editing?.lokasi ?? '',
-    branchId: editing?.branchId ?? '', areaId: editing?.areaId ?? '', buildingId: editing?.buildingId ?? '',
-    floorId: editing?.floorId ?? '', roomId: editing?.roomId ?? '', pic: editing?.pic ?? '',
-    jumlah: editing?.jumlah ?? 1, satuan: editing?.satuan ?? satuanOptions[0] ?? 'Unit',
-    kondisi: editing?.kondisi ?? kondisiOpts[0] ?? 'Baik', statusAset: editing?.statusAset ?? statusOpts[0] ?? 'Aktif',
+    namaAset: editing?.namaAset ?? '',
+    kategori: editing?.kategori ?? kategoriOptions[0] ?? '',
+    subKategori: editing?.subKategori ?? '',
+    merek: editing?.merek ?? '',
+    tipe: editing?.tipe ?? '',
+    nomorSeri: editing?.nomorSeri ?? '',
+    lokasi: editing?.lokasi ?? '',
+    branchId: editing?.branchId ?? '',
+    areaId: editing?.areaId ?? '',
+    buildingId: editing?.buildingId ?? '',
+    floorId: editing?.floorId ?? '',
+    roomId: editing?.roomId ?? '',
+    pic: editing?.pic ?? '',
+    jumlah: editing?.jumlah ?? 1,
+    satuan: editing?.satuan ?? satuanOptions[0] ?? 'Unit',
+    kondisi: editing?.kondisi ?? kondisiOpts[0] ?? 'Baik',
+    statusAset: editing?.statusAset ?? statusOpts[0] ?? 'Aktif',
     tahunPembelian: editing?.tahunPembelian ?? new Date().getFullYear(),
-    tanggalPembelian: (editing?.tanggalPembelian ?? new Date().toISOString()).slice(0, 10),
-    nilaiAset: editing?.nilaiAset ?? 0, sumberPerolehan: editing?.sumberPerolehan ?? sumberOpts[0] ?? 'Pembelian',
+    tanggalPembelian: (
+      editing?.tanggalPembelian ?? new Date().toISOString()
+    ).slice(0, 10),
+    nilaiAset: editing?.nilaiAset ?? 0,
+    sumberPerolehan:
+      editing?.sumberPerolehan ??
+      sumberOpts[0] ??
+      'Pembelian',
     keterangan: editing?.keterangan ?? '',
   });
 
-  const selectedAreas = areas.filter(a => a.branchId === form.branchId && a.status === 'Aktif');
-  const selectedBuildings = buildings.filter(b => b.areaId === form.areaId && b.status === 'Aktif');
-  const selectedFloors = floors.filter(f => f.buildingId === form.buildingId && f.status === 'Aktif').sort((a, b) => a.urutan - b.urutan);
-  const selectedRooms = rooms.filter(r => r.floorId === form.floorId && r.status === 'Aktif');
+  const selectedAreas = areas
+    .filter(
+      a =>
+        a.branchId === form.branchId &&
+        a.status === 'Aktif'
+    );
+
+  const selectedBuildings = buildings
+    .filter(
+      b =>
+        b.areaId === form.areaId &&
+        b.status === 'Aktif'
+    );
+
+  const selectedFloors = floors
+    .filter(
+      f =>
+        f.buildingId === form.buildingId &&
+        f.status === 'Aktif'
+    )
+    .sort((a, b) => a.urutan - b.urutan);
+
+  const selectedRooms = rooms.filter(
+    r =>
+      r.floorId === form.floorId &&
+      r.status === 'Aktif'
+  );
 
   useEffect(() => {
-    if (!form.branchId && editing?.lokasi && branches.length) {
-      const branch = branches.find(b => editing.lokasi.toLowerCase().includes(b.namaCabang.toLowerCase()));
-      if (branch) setForm(f => ({ ...f, branchId: branch.id }));
+    if (
+      !form.branchId &&
+      editing?.lokasi &&
+      branches.length
+    ) {
+      const branch = branches.find(b =>
+        editing.lokasi
+          .toLowerCase()
+          .includes(b.namaCabang.toLowerCase())
+      );
+
+      if (branch) {
+        setForm(f => ({
+          ...f,
+          branchId: branch.id,
+        }));
+      }
     }
   }, [branches, editing, form.branchId]);
 
   useEffect(() => {
-    const branch = branches.find(b => b.id === form.branchId);
-    const area = areas.find(a => a.id === form.areaId);
-    const building = buildings.find(b => b.id === form.buildingId);
-    const floor = floors.find(f => f.id === form.floorId);
-    const room = rooms.find(r => r.id === form.roomId);
-    const label = [branch?.namaCabang, area?.namaArea, building?.namaBangunan, floor?.namaLantai, room?.namaRuangan].filter(Boolean).join(' / ');
-    if (label && label !== form.lokasi) setForm(f => ({ ...f, lokasi: label }));
-  }, [form.branchId, form.areaId, form.buildingId, form.floorId, form.roomId, branches, areas, buildings, floors, rooms]);
+    const branch = branches.find(
+      b => b.id === form.branchId
+    );
 
-  const set = (key: keyof typeof form, val: string | number) => setForm(f => ({ ...f, [key]: val }));
-  const setBranch = (value: string) => setForm(f => ({ ...f, branchId: value, areaId: '', buildingId: '', floorId: '', roomId: '' }));
-  const setArea = (value: string) => setForm(f => ({ ...f, areaId: value, buildingId: '', floorId: '', roomId: '' }));
-  const setBuilding = (value: string) => setForm(f => ({ ...f, buildingId: value, floorId: '', roomId: '' }));
-  const setFloor = (value: string) => setForm(f => ({ ...f, floorId: value, roomId: '' }));
+    const area = areas.find(
+      a => a.id === form.areaId
+    );
+
+    const building = buildings.find(
+      b => b.id === form.buildingId
+    );
+
+    const floor = floors.find(
+      f => f.id === form.floorId
+    );
+
+    const room = rooms.find(
+      r => r.id === form.roomId
+    );
+
+    const label = [
+      branch?.namaCabang,
+      area?.namaArea,
+      building?.namaBangunan,
+      floor?.namaLantai,
+      room?.namaRuangan,
+    ]
+      .filter(Boolean)
+      .join(' / ');
+
+    if (label && label !== form.lokasi) {
+      setForm(f => ({
+        ...f,
+        lokasi: label,
+      }));
+    }
+  }, [
+    form.branchId,
+    form.areaId,
+    form.buildingId,
+    form.floorId,
+    form.roomId,
+    branches,
+    areas,
+    buildings,
+    floors,
+    rooms,
+  ]);
+
+  const set = (
+    key: keyof typeof form,
+    val: string | number
+  ) =>
+    setForm(f => ({
+      ...f,
+      [key]: val,
+    }));
+
+  const setBranch = (value: string) =>
+    setForm(f => ({
+      ...f,
+      branchId: value,
+      areaId: '',
+      buildingId: '',
+      floorId: '',
+      roomId: '',
+    }));
+
+  const setArea = (value: string) =>
+    setForm(f => ({
+      ...f,
+      areaId: value,
+      buildingId: '',
+      floorId: '',
+      roomId: '',
+    }));
+
+  const setBuilding = (value: string) =>
+    setForm(f => ({
+      ...f,
+      buildingId: value,
+      floorId: '',
+      roomId: '',
+    }));
+
+  const setFloor = (value: string) =>
+    setForm(f => ({
+      ...f,
+      floorId: value,
+      roomId: '',
+    }));
 
   const handleSubmit = () => {
     if (!form.namaAset || !form.kodeAset) return;
@@ -421,65 +856,313 @@ function AsetFormModal({
       size="xl"
       footer={
         <>
-          <Button variant="secondary" onClick={onClose} disabled={saving}>Batal</Button>
-          <Button onClick={handleSubmit} disabled={saving}>
-            {saving ? <><Loader2 size={16} className="animate-spin" /> Menyimpan...</> : 'Simpan'}
+          <Button
+            variant="secondary"
+            onClick={onClose}
+            disabled={saving}
+          >
+            Batal
+          </Button>
+
+          <Button
+            onClick={handleSubmit}
+            disabled={saving}
+          >
+            {saving ? (
+              <>
+                <Loader2
+                  size={16}
+                  className="animate-spin"
+                />
+                Menyimpan...
+              </>
+            ) : (
+              'Simpan'
+            )}
           </Button>
         </>
       }
     >
       {masterDataError && (
         <div className="mb-4 flex items-center gap-3 p-3 rounded-lg bg-red-50 border border-red-200">
-          <AlertCircle size={18} className="text-red-600 shrink-0" />
-          <p className="text-sm text-red-700">Gagal memuat data pilihan. Silakan coba lagi.</p>
+          <AlertCircle
+            size={18}
+            className="text-red-600 shrink-0"
+          />
+          <p className="text-sm text-red-700">
+            Gagal memuat data pilihan. Silakan coba lagi.
+          </p>
         </div>
       )}
+
       {masterDataLoading && (
         <div className="mb-4 flex items-center gap-2 p-3 rounded-lg bg-blue-50 border border-blue-200">
-          <Loader2 size={16} className="animate-spin text-blue-600" />
-          <p className="text-sm text-blue-700">Memuat data pilihan...</p>
+          <Loader2
+            size={16}
+            className="animate-spin text-blue-600"
+          />
+          <p className="text-sm text-blue-700">
+            Memuat data pilihan...
+          </p>
         </div>
       )}
+
       <div className="grid grid-cols-2 gap-4">
-        <Input label="Kode Aset" value={form.kodeAset} onChange={v => set('kodeAset', v)} required />
-        <Input label="Nama Aset" value={form.namaAset} onChange={v => set('namaAset', v)} required />
-        <Input label="Kategori" value={form.kategori} onChange={v => set('kategori', v)} options={kategoriOptions} />
-        <Input label="Sub Kategori" value={form.subKategori} onChange={v => set('subKategori', v)} options={subKategoriOptions} />
-        <Input label="Merek/Jenis" value={form.merek} onChange={v => set('merek', v)} />
-        <Input label="Tipe/Spesifikasi" value={form.tipe} onChange={v => set('tipe', v)} />
-        <Input label="Nomor Seri" value={form.nomorSeri} onChange={v => set('nomorSeri', v)} />
+        <Input
+          label="Kode Aset"
+          value={form.kodeAset}
+          onChange={v => set('kodeAset', v)}
+          required
+        />
+
+        <Input
+          label="Nama Aset"
+          value={form.namaAset}
+          onChange={v => set('namaAset', v)}
+          required
+        />
+
+        <Input
+          label="Kategori"
+          value={form.kategori}
+          onChange={v => set('kategori', v)}
+          options={kategoriOptions}
+        />
+
+        <Input
+          label="Sub Kategori"
+          value={form.subKategori}
+          onChange={v => set('subKategori', v)}
+          options={subKategoriOptions}
+        />
+
+        <Input
+          label="Merek/Jenis"
+          value={form.merek}
+          onChange={v => set('merek', v)}
+        />
+
+        <Input
+          label="Tipe/Spesifikasi"
+          value={form.tipe}
+          onChange={v => set('tipe', v)}
+        />
+
+        <Input
+          label="Nomor Seri"
+          value={form.nomorSeri}
+          onChange={v => set('nomorSeri', v)}
+        />
+
         <div className="col-span-2">
           <div className="grid grid-cols-2 gap-4">
-            <LocationSelect label="Cabang" value={form.branchId} onChange={setBranch} options={branches.filter(b => b.status === 'Aktif').map(b => ({ value: b.id, label: `${b.kodeCabang} — ${b.namaCabang}` }))} disabled={locationsLoading} required />
-            <LocationSelect label="Unit / Area" value={form.areaId} onChange={setArea} options={selectedAreas.map(a => ({ value: a.id, label: `${a.kodeArea} — ${a.namaArea}` }))} disabled={!form.branchId || locationsLoading} required />
-            <LocationSelect label="Bangunan" value={form.buildingId} onChange={setBuilding} options={selectedBuildings.map(b => ({ value: b.id, label: `${b.kodeBangunan} — ${b.namaBangunan}` }))} disabled={!form.areaId || locationsLoading} required />
-            <LocationSelect label="Lantai" value={form.floorId} onChange={setFloor} options={selectedFloors.map(f => ({ value: f.id, label: `${f.kodeLantai} — ${f.namaLantai}` }))} disabled={!form.buildingId || locationsLoading} required />
-            <LocationSelect label="Ruangan" value={form.roomId} onChange={v => set('roomId', v)} options={selectedRooms.map(r => ({ value: r.id, label: `${r.kodeRuangan} — ${r.namaRuangan}` }))} disabled={!form.floorId || locationsLoading} />
+
+            <LocationSelect
+              label="Cabang"
+              value={form.branchId}
+              onChange={setBranch}
+              options={branches
+                .filter(b => b.status === 'Aktif')
+                .map(b => ({
+                  value: b.id,
+                  label: `${b.kodeCabang} — ${b.namaCabang}`,
+                }))}
+              disabled={locationsLoading}
+              required
+            />
+
+            <LocationSelect
+              label="Unit / Area"
+              value={form.areaId}
+              onChange={setArea}
+              options={selectedAreas.map(a => ({
+                value: a.id,
+                label: `${a.kodeArea} — ${a.namaArea}`,
+              }))}
+              disabled={
+                !form.branchId ||
+                locationsLoading
+              }
+              required
+            />
+
+            <LocationSelect
+              label="Bangunan"
+              value={form.buildingId}
+              onChange={setBuilding}
+              options={selectedBuildings.map(b => ({
+                value: b.id,
+                label: `${b.kodeBangunan} — ${b.namaBangunan}`,
+              }))}
+              disabled={
+                !form.areaId ||
+                locationsLoading
+              }
+              required
+            />
+
+            <LocationSelect
+              label="Lantai"
+              value={form.floorId}
+              onChange={setFloor}
+              options={selectedFloors.map(f => ({
+                value: f.id,
+                label: `${f.kodeLantai} — ${f.namaLantai}`,
+              }))}
+              disabled={
+                !form.buildingId ||
+                locationsLoading
+              }
+              required
+            />
+
+            <LocationSelect
+              label="Ruangan"
+              value={form.roomId}
+              onChange={v =>
+                set('roomId', v)
+              }
+              options={selectedRooms.map(r => ({
+                value: r.id,
+                label: `${r.kodeRuangan} — ${r.namaRuangan}`,
+              }))}
+              disabled={
+                !form.floorId ||
+                locationsLoading
+              }
+            />
+
           </div>
-          {locationsLoading && <p className="text-xs text-ink-400 mt-2">Memuat struktur lokasi...</p>}
+
+          {locationsLoading && (
+            <p className="text-xs text-ink-400 mt-2">
+              Memuat struktur lokasi...
+            </p>
+          )}
+
           {locationsError && (
             <div className="flex items-center justify-between gap-3 mt-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200">
-              <p className="text-xs text-amber-700">{locationsError}</p>
-              <button type="button" onClick={() => onRetryLocations()} className="text-xs font-semibold text-amber-700 hover:text-amber-900">Coba lagi</button>
+              <p className="text-xs text-amber-700">
+                {locationsError}
+              </p>
+
+              <button
+                type="button"
+                onClick={() => onRetryLocations()}
+                className="text-xs font-semibold text-amber-700 hover:text-amber-900"
+              >
+                Coba lagi
+              </button>
             </div>
           )}
         </div>
-        <Input label="PIC" value={form.pic} onChange={v => set('pic', v)} options={picOptions} />
+
+        <Input
+          label="PIC"
+          value={form.pic}
+          onChange={v => set('pic', v)}
+          options={picOptions}
+        />
+
         <div className="grid grid-cols-2 gap-3">
-          <Input label="Jumlah" type="number" value={form.jumlah} onChange={v => set('jumlah', Number(v))} />
-          <Input label="Satuan" value={form.satuan} onChange={v => set('satuan', v)} options={satuanOptions} />
+          <Input
+            label="Jumlah"
+            type="number"
+            value={form.jumlah}
+            onChange={v =>
+              set('jumlah', Number(v))
+            }
+          />
+
+          <Input
+            label="Satuan"
+            value={form.satuan}
+            onChange={v =>
+              set('satuan', v)
+            }
+            options={satuanOptions}
+          />
         </div>
-        <Input label="Kondisi" value={form.kondisi} onChange={v => set('kondisi', v)} options={kondisiOpts} />
-        <Input label="Status Aset" value={form.statusAset} onChange={v => set('statusAset', v)} options={statusOpts} />
-        <Input label="Tahun Pembelian" type="number" value={form.tahunPembelian} onChange={v => set('tahunPembelian', Number(v))} />
-        <Input label="Tanggal Pembelian" type="date" value={form.tanggalPembelian} onChange={v => set('tanggalPembelian', v)} />
-        <Input label="Nilai Aset (Rp)" type="number" value={form.nilaiAset} onChange={v => set('nilaiAset', Number(v))} />
-        <Input label="Sumber Perolehan" value={form.sumberPerolehan} onChange={v => set('sumberPerolehan', v)} options={sumberOpts} />
+
+        <Input
+          label="Kondisi"
+          value={form.kondisi}
+          onChange={v =>
+            set('kondisi', v)
+          }
+          options={kondisiOpts}
+        />
+
+        <Input
+          label="Status Aset"
+          value={form.statusAset}
+          onChange={v =>
+            set('statusAset', v)
+          }
+          options={statusOpts}
+        />
+
+        <Input
+          label="Tahun Pembelian"
+          type="number"
+          value={form.tahunPembelian}
+          onChange={v =>
+            set(
+              'tahunPembelian',
+              Number(v)
+            )
+          }
+        />
+
+        <Input
+          label="Tanggal Pembelian"
+          type="date"
+          value={form.tanggalPembelian}
+          onChange={v =>
+            set(
+              'tanggalPembelian',
+              v
+            )
+          }
+        />
+
+        <Input
+          label="Nilai Aset (Rp)"
+          type="number"
+          value={form.nilaiAset}
+          onChange={v =>
+            set(
+              'nilaiAset',
+              Number(v)
+            )
+          }
+        />
+
+        <Input
+          label="Sumber Perolehan"
+          value={form.sumberPerolehan}
+          onChange={v =>
+            set(
+              'sumberPerolehan',
+              v
+            )
+          }
+          options={sumberOpts}
+        />
+
         <div className="col-span-2">
-          <label className="block text-xs font-semibold text-ink-600 mb-1.5">Keterangan</label>
+          <label className="block text-xs font-semibold text-ink-600 mb-1.5">
+            Keterangan
+          </label>
+
           <textarea
             value={form.keterangan}
-            onChange={e => set('keterangan', e.target.value)}
+            onChange={e =>
+              set(
+                'keterangan',
+                e.target.value
+              )
+            }
             rows={2}
             className="w-full px-3 py-2.5 rounded-lg border border-ink-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
           />
