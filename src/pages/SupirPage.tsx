@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Search, Edit2, Trash2, Car } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, UserRound } from 'lucide-react';
 import { useApp } from '@/hooks/useAppStore';
 import {
   PageHeader,
@@ -11,86 +11,79 @@ import {
   EmptyState,
 } from '@/components/ui';
 import { Badge, statusBadge } from '@/components/ui/Badge';
-import type {
-  Kendaraan,
-  StatusKendaraan,
-  KondisiKendaraan,
-} from '@/types';
+import type { Driver } from '@/api/drivers';
 
-const statusOptions: StatusKendaraan[] = [
-  'Tersedia',
-  'Digunakan',
-  'Maintenance',
+const statusOptions = [
+  'Aktif',
   'Tidak Aktif',
 ];
 
-const kondisiOptions: KondisiKendaraan[] = [
-  'Baik',
-  'Perlu Servis',
-  'Maintenance',
+const cabangOptions = [
+  'Jonggol',
+  'Pamijahan',
+  'Sentul',
+  'Solo',
 ];
 
-const driverOptions = [
-  'Bapak Ari — Jonggol',
-  'Bapak Hendro — Jonggol',
-  'Bapak Deni — Jonggol',
-  'Bapak Akim — Pamijahan',
-  'Bapak Yusuf — Sentul',
-  'Bapak Hari — Solo',
-];
-
-const lokasiOptions = [
-  'IDN Jonggol Ikhwan',
-  'IDN Jonggol Akhwat',
-  'Kantor Yayasan',
-  'IDN Pamijahan',
-  'IDN Sentul',
-  'IDN Solo',
-];
-
-export function KendaraanPage() {
+export function SupirPage() {
   const {
-    kendaraan,
-    kendaraanLoading,
-    kendaraanError,
-    kendaraanSaving,
-    addKendaraan,
-    updateKendaraan,
-    deleteKendaraan,
+    drivers,
+    driversLoading,
+    driversError,
+    driversSaving,
+    addDriver,
+    updateDriver,
+    deleteDriver,
     pushToast,
   } = useApp();
 
   const [search, setSearch] = useState('');
+  const [filterCabang, setFilterCabang] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [editing, setEditing] = useState<Kendaraan | null>(null);
+  const [editing, setEditing] = useState<Driver | null>(null);
 
   const filtered = useMemo(
     () =>
-      kendaraan.filter(k => {
+      drivers.filter(driver => {
         const searchValue = search.toLowerCase();
 
         const matchSearch =
           !search ||
-          k.namaKendaraan.toLowerCase().includes(searchValue) ||
-          k.nomorPolisi.toLowerCase().includes(searchValue) ||
-          k.kodeKendaraan.toLowerCase().includes(searchValue);
+          driver.namaSupir.toLowerCase().includes(searchValue) ||
+          driver.kodeSupir.toLowerCase().includes(searchValue) ||
+          driver.cabang.toLowerCase().includes(searchValue) ||
+          driver.nomorHP.toLowerCase().includes(searchValue);
+
+        const matchCabang =
+          !filterCabang ||
+          driver.cabang === filterCabang;
 
         const matchStatus =
-          !filterStatus || k.status === filterStatus;
+          !filterStatus ||
+          driver.status === filterStatus;
 
-        return matchSearch && matchStatus;
+        return (
+          matchSearch &&
+          matchCabang &&
+          matchStatus
+        );
       }),
-    [kendaraan, search, filterStatus]
+    [
+      drivers,
+      search,
+      filterCabang,
+      filterStatus,
+    ]
   );
 
   const handleSave = async (
-    data: Omit<Kendaraan, 'id'>
+    data: Omit<Driver, 'id' | 'kodeSupir'>
   ) => {
     const error = editing
-      ? await updateKendaraan(editing.id, data)
-      : await addKendaraan(data);
+      ? await updateDriver(editing.id, data)
+      : await addDriver(data);
 
     if (error) {
       pushToast(error, 'error');
@@ -99,8 +92,8 @@ export function KendaraanPage() {
 
     pushToast(
       editing
-        ? 'Data kendaraan berhasil diperbarui.'
-        : 'Data kendaraan berhasil ditambahkan.',
+        ? 'Data supir berhasil diperbarui.'
+        : 'Data supir berhasil ditambahkan.',
       'success'
     );
 
@@ -111,40 +104,50 @@ export function KendaraanPage() {
   const handleDelete = async () => {
     if (!deleteId) return;
 
-    const error = await deleteKendaraan(deleteId);
+    const error = await deleteDriver(deleteId);
 
     if (error) {
       pushToast(error, 'error');
       return;
     }
 
-    pushToast('Data kendaraan berhasil dihapus.', 'success');
+    pushToast(
+      'Data supir berhasil dihapus.',
+      'success'
+    );
+
     setDeleteId(null);
   };
 
   return (
     <div>
       <PageHeader
-        title="Kendaraan Operasional"
-        subtitle="Manajemen kendaraan operasional IDN"
-        breadcrumb={['SPMS', 'Operasional', 'Kendaraan']}
+        title="Supir"
+        subtitle="Manajemen data supir operasional IDN"
+        breadcrumb={[
+          'SPMS',
+          'Operasional',
+          'Supir',
+        ]}
         actions={
           <Button
-            disabled={kendaraanSaving}
+            disabled={driversSaving}
             onClick={() => {
               setEditing(null);
               setModalOpen(true);
             }}
           >
             <Plus size={16} />
-            Tambah Kendaraan
+            Tambah Supir
           </Button>
         }
       />
 
       {/* FILTER */}
       <Card className="mb-4 p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+
+          {/* SEARCH */}
           <div className="relative">
             <Search
               size={16}
@@ -154,21 +157,53 @@ export function KendaraanPage() {
             <input
               type="text"
               value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Cari kendaraan..."
+              onChange={e =>
+                setSearch(e.target.value)
+              }
+              placeholder="Cari supir..."
               className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-ink-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
             />
           </div>
 
+          {/* CABANG */}
           <select
-            value={filterStatus}
-            onChange={e => setFilterStatus(e.target.value)}
+            value={filterCabang}
+            onChange={e =>
+              setFilterCabang(e.target.value)
+            }
             className="px-3 py-2.5 rounded-lg border border-ink-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
           >
-            <option value="">Semua Status</option>
+            <option value="">
+              Semua Cabang
+            </option>
+
+            {cabangOptions.map(cabang => (
+              <option
+                key={cabang}
+                value={cabang}
+              >
+                {cabang}
+              </option>
+            ))}
+          </select>
+
+          {/* STATUS */}
+          <select
+            value={filterStatus}
+            onChange={e =>
+              setFilterStatus(e.target.value)
+            }
+            className="px-3 py-2.5 rounded-lg border border-ink-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+          >
+            <option value="">
+              Semua Status
+            </option>
 
             {statusOptions.map(status => (
-              <option key={status} value={status}>
+              <option
+                key={status}
+                value={status}
+              >
                 {status}
               </option>
             ))}
@@ -177,14 +212,14 @@ export function KendaraanPage() {
       </Card>
 
       {/* ERROR */}
-      {kendaraanError && (
+      {driversError && (
         <Card className="mb-4 p-4 border border-red-200 bg-red-50">
           <p className="text-sm font-semibold text-red-700">
-            Gagal memuat data kendaraan
+            Gagal memuat data supir
           </p>
 
           <p className="text-xs text-red-600 mt-1">
-            {kendaraanError}
+            {driversError}
           </p>
         </Card>
       )}
@@ -195,32 +230,21 @@ export function KendaraanPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-ink-100 bg-ink-50/50">
+
                 <th className="text-left px-4 py-3 text-xs font-bold text-ink-500 uppercase">
                   Kode
                 </th>
 
                 <th className="text-left px-4 py-3 text-xs font-bold text-ink-500 uppercase">
-                  Kendaraan
+                  Nama Supir
                 </th>
 
                 <th className="text-left px-4 py-3 text-xs font-bold text-ink-500 uppercase">
-                  No. Polisi
+                  Cabang
                 </th>
 
                 <th className="text-left px-4 py-3 text-xs font-bold text-ink-500 uppercase">
-                  Tahun
-                </th>
-
-                <th className="text-left px-4 py-3 text-xs font-bold text-ink-500 uppercase">
-                  Driver/PIC
-                </th>
-
-                <th className="text-right px-4 py-3 text-xs font-bold text-ink-500 uppercase">
-                  KM
-                </th>
-
-                <th className="text-left px-4 py-3 text-xs font-bold text-ink-500 uppercase">
-                  Kondisi
+                  No. HP
                 </th>
 
                 <th className="text-left px-4 py-3 text-xs font-bold text-ink-500 uppercase">
@@ -230,95 +254,90 @@ export function KendaraanPage() {
                 <th className="text-center px-4 py-3 text-xs font-bold text-ink-500 uppercase">
                   Aksi
                 </th>
+
               </tr>
             </thead>
 
             <tbody>
-              {kendaraanLoading ? (
+              {driversLoading ? (
                 <tr>
                   <td
-                    colSpan={9}
+                    colSpan={6}
                     className="px-4 py-12 text-center"
                   >
                     <div className="text-sm text-ink-500">
-                      Memuat data kendaraan...
+                      Memuat data supir...
                     </div>
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={9}>
-                    <EmptyState message="Tidak ada data kendaraan" />
+                  <td colSpan={6}>
+                    <EmptyState message="Tidak ada data supir" />
                   </td>
                 </tr>
               ) : (
-                filtered.map(k => {
-                  const statusBdg = statusBadge(k.status);
-                  const kondisiBdg = statusBadge(k.kondisi);
+                filtered.map(driver => {
+                  const statusBdg =
+                    statusBadge(driver.status);
 
                   return (
                     <tr
-                      key={k.id}
+                      key={driver.id}
                       className="border-b border-ink-50 hover:bg-ink-50/30 transition-colors"
                     >
+
+                      {/* KODE */}
                       <td className="px-4 py-3 font-mono text-xs text-ink-600">
-                        {k.kodeKendaraan}
+                        {driver.kodeSupir}
                       </td>
 
+                      {/* NAMA */}
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
+
                           <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-                            <Car size={15} />
+                            <UserRound size={15} />
                           </div>
 
                           <div>
                             <p className="font-semibold text-ink-800">
-                              {k.namaKendaraan}
+                              {driver.namaSupir}
                             </p>
 
                             <p className="text-xs text-ink-400">
-                              {k.merek} {k.tipe}
+                              Driver Operasional
                             </p>
                           </div>
+
                         </div>
                       </td>
 
-                      <td className="px-4 py-3 font-mono text-xs font-semibold text-ink-700">
-                        {k.nomorPolisi}
-                      </td>
-
+                      {/* CABANG */}
                       <td className="px-4 py-3 text-ink-600">
-                        {k.tahun}
+                        {driver.cabang}
                       </td>
 
-                      <td className="px-4 py-3 text-ink-600 text-xs">
-                        {k.driver}
+                      {/* NOMOR HP */}
+                      <td className="px-4 py-3 font-mono text-xs text-ink-700">
+                        {driver.nomorHP}
                       </td>
 
-                      <td className="px-4 py-3 text-right font-semibold text-ink-800">
-                        {Number(k.kilometer || 0).toLocaleString(
-                          'id-ID'
-                        )}
-                      </td>
-
-                      <td className="px-4 py-3">
-                        <Badge variant={kondisiBdg.variant}>
-                          {k.kondisi}
-                        </Badge>
-                      </td>
-
+                      {/* STATUS */}
                       <td className="px-4 py-3">
                         <Badge variant={statusBdg.variant}>
-                          {k.status}
+                          {driver.status}
                         </Badge>
                       </td>
 
+                      {/* AKSI */}
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-center gap-1">
+
                           <button
-                            disabled={kendaraanSaving}
+                            disabled={driversSaving}
                             onClick={() => {
-                              setEditing(k);
+                              setEditing(driver);
                               setModalOpen(true);
                             }}
                             className="p-1.5 rounded-lg text-ink-400 hover:bg-brand-50 hover:text-brand-600 transition-colors disabled:opacity-50"
@@ -328,15 +347,19 @@ export function KendaraanPage() {
                           </button>
 
                           <button
-                            disabled={kendaraanSaving}
-                            onClick={() => setDeleteId(k.id)}
+                            disabled={driversSaving}
+                            onClick={() =>
+                              setDeleteId(driver.id)
+                            }
                             className="p-1.5 rounded-lg text-ink-400 hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-50"
                             title="Hapus"
                           >
                             <Trash2 size={15} />
                           </button>
+
                         </div>
                       </td>
+
                     </tr>
                   );
                 })
@@ -345,19 +368,19 @@ export function KendaraanPage() {
           </table>
         </div>
 
+        {/* FOOTER */}
         <div className="px-4 py-3 border-t border-ink-100 text-xs text-ink-500">
-          Menampilkan {filtered.length} dari {kendaraan.length}{' '}
-          kendaraan
+          Menampilkan {filtered.length} dari {drivers.length} supir
         </div>
       </Card>
 
       {/* FORM */}
       {modalOpen && (
-        <KendaraanForm
+        <SupirForm
           editing={editing}
-          saving={kendaraanSaving}
+          saving={driversSaving}
           onClose={() => {
-            if (kendaraanSaving) return;
+            if (driversSaving) return;
 
             setModalOpen(false);
             setEditing(null);
@@ -370,73 +393,61 @@ export function KendaraanPage() {
       <ConfirmDialog
         open={!!deleteId}
         onClose={() => {
-          if (!kendaraanSaving) {
+          if (!driversSaving) {
             setDeleteId(null);
           }
         }}
         onConfirm={handleDelete}
-        title="Hapus Kendaraan"
-        message="Apakah Anda yakin ingin menghapus data kendaraan ini?"
-        confirmText={kendaraanSaving ? 'Menghapus...' : 'Hapus'}
+        title="Hapus Supir"
+        message="Apakah Anda yakin ingin menghapus data supir ini?"
+        confirmText={
+          driversSaving
+            ? 'Menghapus...'
+            : 'Hapus'
+        }
       />
     </div>
   );
 }
 
 
-function KendaraanForm({
+/* =====================================================
+   FORM SUPIR
+===================================================== */
+
+function SupirForm({
   editing,
   saving,
   onClose,
   onSave,
 }: {
-  editing: Kendaraan | null;
+  editing: Driver | null;
   saving: boolean;
   onClose: () => void;
-  onSave: (data: Omit<Kendaraan, 'id'>) => Promise<void>;
+  onSave: (
+    data: Omit<Driver, 'id' | 'kodeSupir'>
+  ) => Promise<void>;
 }) {
-  const [form, setForm] = useState<Omit<Kendaraan, 'id'>>({
-    // Kode kendaraan dibuat oleh server.
-    kodeKendaraan:
-      editing?.kodeKendaraan || '',
+  const [form, setForm] = useState<
+    Omit<Driver, 'id' | 'kodeSupir'>
+  >({
+    namaSupir:
+      editing?.namaSupir || '',
 
-    namaKendaraan:
-      editing?.namaKendaraan || '',
+    cabang:
+      editing?.cabang ||
+      cabangOptions[0],
 
-    nomorPolisi:
-      editing?.nomorPolisi || '',
-
-    merek:
-      editing?.merek || '',
-
-    tipe:
-      editing?.tipe || '',
-
-    tahun:
-      editing?.tahun || new Date().getFullYear(),
-
-    kondisi:
-      editing?.kondisi || 'Baik',
+    nomorHP:
+      editing?.nomorHP || '',
 
     status:
-      editing?.status || 'Tersedia',
-
-    driver:
-      editing?.driver || driverOptions[0],
-
-    lokasi:
-      editing?.lokasi || lokasiOptions[0],
-
-    kilometer:
-      editing?.kilometer || 0,
-
-    keterangan:
-      editing?.keterangan || '',
+      editing?.status || 'Aktif',
   });
 
   const set = (
     key: keyof typeof form,
-    value: string | number
+    value: string
   ) => {
     setForm(prev => ({
       ...prev,
@@ -450,10 +461,10 @@ function KendaraanForm({
       onClose={onClose}
       title={
         editing
-          ? 'Edit Kendaraan'
-          : 'Tambah Kendaraan'
+          ? 'Edit Supir'
+          : 'Tambah Supir'
       }
-      size="lg"
+      size="md"
       footer={
         <>
           <Button
@@ -468,19 +479,21 @@ function KendaraanForm({
             onClick={() => onSave(form)}
             disabled={saving}
           >
-            {saving ? 'Menyimpan...' : 'Simpan'}
+            {saving
+              ? 'Menyimpan...'
+              : 'Simpan'}
           </Button>
         </>
       }
     >
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4">
 
         {/* KODE */}
         <div>
           <Input
-            label="Kode Kendaraan"
+            label="Kode Supir"
             value={
-              form.kodeKendaraan ||
+              editing?.kodeSupir ||
               'Otomatis oleh sistem'
             }
             onChange={() => {}}
@@ -494,113 +507,47 @@ function KendaraanForm({
           )}
         </div>
 
+        {/* NAMA */}
         <Input
-          label="Nama Kendaraan"
-          value={form.namaKendaraan}
+          label="Nama Supir"
+          value={form.namaSupir}
           onChange={v =>
-            set('namaKendaraan', v)
+            set('namaSupir', v)
           }
           required
         />
 
+        {/* CABANG */}
         <Input
-          label="Nomor Polisi"
-          value={form.nomorPolisi}
+          label="Cabang"
+          value={form.cabang}
           onChange={v =>
-            set('nomorPolisi', v)
+            set('cabang', v)
+          }
+          options={cabangOptions}
+          required
+        />
+
+        {/* NOMOR HP */}
+        <Input
+          label="Nomor HP"
+          value={form.nomorHP}
+          onChange={v =>
+            set('nomorHP', v)
           }
           required
         />
 
-        <Input
-          label="Merek"
-          value={form.merek}
-          onChange={v => set('merek', v)}
-        />
-
-        <Input
-          label="Tipe"
-          value={form.tipe}
-          onChange={v => set('tipe', v)}
-        />
-
-        <Input
-          label="Tahun"
-          type="number"
-          value={form.tahun}
-          onChange={v =>
-            set('tahun', Number(v))
-          }
-        />
-
-        <Input
-          label="Kondisi"
-          value={form.kondisi}
-          onChange={v =>
-            set(
-              'kondisi',
-              v as KondisiKendaraan
-            )
-          }
-          options={kondisiOptions}
-        />
-
+        {/* STATUS */}
         <Input
           label="Status"
           value={form.status}
           onChange={v =>
-            set(
-              'status',
-              v as StatusKendaraan
-            )
+            set('status', v)
           }
           options={statusOptions}
         />
 
-        <Input
-          label="Driver/PIC"
-          value={form.driver}
-          onChange={v =>
-            set('driver', v)
-          }
-          options={driverOptions}
-        />
-
-        <Input
-          label="Lokasi"
-          value={form.lokasi}
-          onChange={v =>
-            set('lokasi', v)
-          }
-          options={lokasiOptions}
-        />
-
-        <Input
-          label="Kilometer"
-          type="number"
-          value={form.kilometer}
-          onChange={v =>
-            set('kilometer', Number(v))
-          }
-        />
-
-        <div className="col-span-2">
-          <label className="block text-xs font-semibold text-ink-600 mb-1.5">
-            Keterangan
-          </label>
-
-          <textarea
-            value={form.keterangan}
-            onChange={e =>
-              set(
-                'keterangan',
-                e.target.value
-              )
-            }
-            rows={2}
-            className="w-full px-3 py-2.5 rounded-lg border border-ink-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
-          />
-        </div>
       </div>
     </Modal>
   );

@@ -31,6 +31,22 @@ import {
   deleteAsset,
 } from '@/api/assets';
 
+import {
+  getVehicles,
+  createVehicle,
+  updateVehicle,
+  deleteVehicle,
+} from '@/api/vehicles';
+
+import {
+  getDrivers,
+  createDriver,
+  updateDriver as updateDriverApi,
+  deleteDriver as deleteDriverApi,
+} from '@/api/drivers';
+
+import type { Driver } from '@/api/drivers';
+
 import { getMasterData } from '@/api/masterData';
 import type { MasterData } from '@/api/masterData';
 
@@ -80,6 +96,17 @@ interface AppState {
   fetchLocations: () => Promise<void>;
 
   kendaraan: Kendaraan[];
+  kendaraanLoading: boolean;
+  kendaraanError: string | null;
+  kendaraanSaving: boolean;
+  fetchKendaraan: () => Promise<void>;
+
+  drivers: Driver[];
+  driversLoading: boolean;
+  driversError: string | null;
+  driversSaving: boolean;
+  fetchDrivers: () => Promise<void>;
+
   maintenance: Maintenance[];
   pengajuan: Pengajuan[];
   proyek: Proyek[];
@@ -92,14 +119,35 @@ interface AppState {
   toasts: ToastMsg[];
   widgets: WidgetConfig[];
 
-  // CRUD generic
   addAset: (a: Omit<Aset, 'id'>) => Promise<string | null>;
   updateAset: (id: string, a: Omit<Aset, 'id'>) => Promise<string | null>;
   deleteAset: (id: string) => Promise<string | null>;
 
-  addKendaraan: (k: Omit<Kendaraan, 'id'>) => void;
-  updateKendaraan: (id: string, k: Partial<Kendaraan>) => void;
-  deleteKendaraan: (id: string) => void;
+  addKendaraan: (
+    k: Omit<Kendaraan, 'id' | 'kodeKendaraan'>
+  ) => Promise<string | null>;
+
+  updateKendaraan: (
+    id: string,
+    k: Partial<Kendaraan>
+  ) => Promise<string | null>;
+
+  deleteKendaraan: (
+    id: string
+  ) => Promise<string | null>;
+
+  addDriver: (
+    d: Omit<Driver, 'id' | 'kodeSupir'>
+  ) => Promise<string | null>;
+
+  updateDriver: (
+    id: string,
+    d: Partial<Driver>
+  ) => Promise<string | null>;
+
+  deleteDriver: (
+    id: string
+  ) => Promise<string | null>;
 
   addMaintenance: (m: Omit<Maintenance, 'id'>) => void;
   updateMaintenance: (id: string, m: Partial<Maintenance>) => void;
@@ -174,7 +222,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [locationsLoading, setLocationsLoading] = useState<boolean>(false);
   const [locationsError, setLocationsError] = useState<string | null>(null);
 
-  const [kendaraan, setKendaraan] = useState<Kendaraan[]>(kendaraanSeed);
+  const [kendaraan, setKendaraan] = useState<Kendaraan[]>([]);
+  const [kendaraanLoading, setKendaraanLoading] = useState<boolean>(false);
+  const [kendaraanError, setKendaraanError] = useState<string | null>(null);
+  const [kendaraanSaving, setKendaraanSaving] = useState<boolean>(false);
+
+  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [driversLoading, setDriversLoading] = useState<boolean>(false);
+  const [driversError, setDriversError] = useState<string | null>(null);
+  const [driversSaving, setDriversSaving] = useState<boolean>(false);
+
   const [maintenance, setMaintenance] = useState<Maintenance[]>(maintenanceSeed);
   const [pengajuan, setPengajuan] = useState<Pengajuan[]>(pengajuanSeed);
   const [proyek, setProyek] = useState<Proyek[]>(proyekSeed);
@@ -212,6 +269,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  // =========================================================
+  // INVENTARIS - DATA DARI GOOGLE SHEETS
+  // =========================================================
+
   const fetchAset = useCallback(async () => {
     setAsetLoading(true);
     setAsetError(null);
@@ -219,26 +280,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       const data = await getAssets();
 
-      if (data && data.length > 0) {
-        setAset(data);
-        setAsetSource('api');
-      } else {
-        setAset(asetSeed);
-        setAsetSource('seed');
-      }
+      setAset(data || []);
+      setAsetSource('api');
     } catch (err) {
-      setAsetError(
+      const errorMessage =
         err instanceof Error
           ? err.message
-          : 'Gagal terhubung ke server'
-      );
+          : 'Gagal terhubung ke server';
 
-      setAset(asetSeed);
-      setAsetSource('seed');
+      setAsetError(errorMessage);
+      setAset([]);
+      setAsetSource(null);
     } finally {
       setAsetLoading(false);
     }
   }, []);
+
+  // =========================================================
+  // MASTER DATA
+  // =========================================================
 
   const fetchMasterData = useCallback(async () => {
     setMasterDataLoading(true);
@@ -257,6 +317,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setMasterDataLoading(false);
     }
   }, []);
+
+  // =========================================================
+  // MASTER LOKASI
+  // =========================================================
 
   const fetchLocations = useCallback(async () => {
     setLocationsLoading(true);
@@ -292,6 +356,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setLocationsLoading(false);
     }
   }, []);
+
+  // =========================================================
+  // INVENTARIS CRUD
+  // =========================================================
 
   const addAset = useCallback(
     async (a: Omit<Aset, 'id'>): Promise<string | null> => {
@@ -384,61 +452,279 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [pushAktivitas, touch, fetchAset]
   );
 
+  // =========================================================
+  // KENDARAAN - DATA DARI GOOGLE SHEETS
+  // =========================================================
+
+  const fetchKendaraan = useCallback(async () => {
+    setKendaraanLoading(true);
+    setKendaraanError(null);
+
+    try {
+      const data = await getVehicles();
+      setKendaraan(data || []);
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : 'Gagal terhubung ke server';
+
+      setKendaraanError(errorMessage);
+      setKendaraan([]);
+    } finally {
+      setKendaraanLoading(false);
+    }
+  }, []);
+
   const addKendaraan = useCallback(
-    (k: Omit<Kendaraan, 'id'>) => {
-      setKendaraan(prev => [
-        { ...k, id: generateId('ken') },
-        ...prev,
-      ]);
+    async (
+      k: Omit<Kendaraan, 'id' | 'kodeKendaraan'>
+    ): Promise<string | null> => {
+      setKendaraanSaving(true);
 
-      pushAktivitas(
-        'kendaraan',
-        'Kendaraan ditambahkan',
-        `${k.namaKendaraan} ditambahkan`
-      );
+      try {
+        await createVehicle(k);
 
-      touch();
+        pushAktivitas(
+          'kendaraan',
+          'Kendaraan ditambahkan',
+          `${k.namaKendaraan} ditambahkan`
+        );
+
+        touch();
+        await fetchKendaraan();
+
+        return null;
+      } catch (err) {
+        return err instanceof Error
+          ? err.message
+          : 'Gagal menyimpan kendaraan ke server';
+      } finally {
+        setKendaraanSaving(false);
+      }
     },
-    [pushAktivitas, touch]
+    [pushAktivitas, touch, fetchKendaraan]
   );
 
   const updateKendaraan = useCallback(
-    (id: string, k: Partial<Kendaraan>) => {
-      setKendaraan(prev =>
-        prev.map(item =>
-          item.id === id
-            ? { ...item, ...k }
-            : item
-        )
-      );
+    async (
+      id: string,
+      k: Partial<Kendaraan>
+    ): Promise<string | null> => {
+      if (!id) {
+        return 'Kendaraan ini tidak memiliki ID dari server.';
+      }
 
-      pushAktivitas(
-        'kendaraan',
-        'Kendaraan diperbarui',
-        `Data kendaraan diperbarui`
-      );
+      setKendaraanSaving(true);
 
-      touch();
+      try {
+        const current = kendaraan.find(
+          item => item.id === id
+        );
+
+        if (!current) {
+          return 'Data kendaraan tidak ditemukan.';
+        }
+
+        await updateVehicle({
+          ...current,
+          ...k,
+          id,
+        });
+
+        pushAktivitas(
+          'kendaraan',
+          'Kendaraan diperbarui',
+          'Data kendaraan diperbarui'
+        );
+
+        touch();
+        await fetchKendaraan();
+
+        return null;
+      } catch (err) {
+        return err instanceof Error
+          ? err.message
+          : 'Gagal memperbarui kendaraan';
+      } finally {
+        setKendaraanSaving(false);
+      }
     },
-    [pushAktivitas, touch]
+    [kendaraan, pushAktivitas, touch, fetchKendaraan]
   );
 
   const deleteKendaraan = useCallback(
-    (id: string) => {
-      setKendaraan(prev =>
-        prev.filter(item => item.id !== id)
-      );
+    async (
+      id: string
+    ): Promise<string | null> => {
+      if (!id) {
+        return 'Kendaraan ini tidak memiliki ID dari server.';
+      }
 
-      pushAktivitas(
-        'kendaraan',
-        'Kendaraan dihapus',
-        `Kendaraan dihapus`
-      );
+      setKendaraanSaving(true);
 
-      touch();
+      try {
+        await deleteVehicle(id);
+
+        pushAktivitas(
+          'kendaraan',
+          'Kendaraan dihapus',
+          'Kendaraan dihapus'
+        );
+
+        touch();
+        await fetchKendaraan();
+
+        return null;
+      } catch (err) {
+        return err instanceof Error
+          ? err.message
+          : 'Gagal menghapus kendaraan';
+      } finally {
+        setKendaraanSaving(false);
+      }
     },
-    [pushAktivitas, touch]
+    [pushAktivitas, touch, fetchKendaraan]
   );
+
+  // =========================================================
+  // SUPIR - DATA DARI GOOGLE SHEETS
+  // =========================================================
+
+  const fetchDrivers = useCallback(async () => {
+    setDriversLoading(true);
+    setDriversError(null);
+
+    try {
+      const data = await getDrivers();
+      setDrivers(data || []);
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : 'Gagal terhubung ke server';
+
+      setDriversError(errorMessage);
+      setDrivers([]);
+    } finally {
+      setDriversLoading(false);
+    }
+  }, []);
+
+  const addDriver = useCallback(
+    async (
+      d: Omit<Driver, 'id' | 'kodeSupir'>
+    ): Promise<string | null> => {
+      setDriversSaving(true);
+
+      try {
+        await createDriver(d);
+
+        pushAktivitas(
+          'kendaraan',
+          'Supir ditambahkan',
+          `${d.namaSupir} ditambahkan`
+        );
+
+        touch();
+        await fetchDrivers();
+
+        return null;
+      } catch (err) {
+        return err instanceof Error
+          ? err.message
+          : 'Gagal menyimpan supir ke server';
+      } finally {
+        setDriversSaving(false);
+      }
+    },
+    [pushAktivitas, touch, fetchDrivers]
+  );
+
+  const updateDriver = useCallback(
+    async (
+      id: string,
+      d: Partial<Driver>
+    ): Promise<string | null> => {
+      if (!id) {
+        return 'Supir ini tidak memiliki ID dari server.';
+      }
+
+      setDriversSaving(true);
+
+      try {
+        const current = drivers.find(
+          item => item.id === id
+        );
+
+        if (!current) {
+          return 'Data supir tidak ditemukan.';
+        }
+
+        await updateDriverApi({
+          ...current,
+          ...d,
+          id,
+        });
+
+        pushAktivitas(
+          'kendaraan',
+          'Supir diperbarui',
+          'Data supir diperbarui'
+        );
+
+        touch();
+        await fetchDrivers();
+
+        return null;
+      } catch (err) {
+        return err instanceof Error
+          ? err.message
+          : 'Gagal memperbarui supir';
+      } finally {
+        setDriversSaving(false);
+      }
+    },
+    [drivers, pushAktivitas, touch, fetchDrivers]
+  );
+
+  const deleteDriver = useCallback(
+    async (
+      id: string
+    ): Promise<string | null> => {
+      if (!id) {
+        return 'Supir ini tidak memiliki ID dari server.';
+      }
+
+      setDriversSaving(true);
+
+      try {
+        await deleteDriverApi(id);
+
+        pushAktivitas(
+          'kendaraan',
+          'Supir dihapus',
+          'Supir dihapus'
+        );
+
+        touch();
+        await fetchDrivers();
+
+        return null;
+      } catch (err) {
+        return err instanceof Error
+          ? err.message
+          : 'Gagal menghapus supir';
+      } finally {
+        setDriversSaving(false);
+      }
+    },
+    [pushAktivitas, touch, fetchDrivers]
+  );
+
+  // =========================================================
+  // MAINTENANCE
+  // =========================================================
 
   const addMaintenance = useCallback(
     (m: Omit<Maintenance, 'id'>) => {
@@ -496,6 +782,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [pushAktivitas, touch]
   );
 
+  // =========================================================
+  // PENGAJUAN
+  // =========================================================
+
   const addPengajuan = useCallback(
     (p: Omit<Pengajuan, 'id'>) => {
       setPengajuan(prev => [
@@ -551,6 +841,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
     [pushAktivitas, touch]
   );
+
+  // =========================================================
+  // PROYEK
+  // =========================================================
 
   const addProyek = useCallback(
     (p: Omit<Proyek, 'id'>) => {
@@ -608,6 +902,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [pushAktivitas, touch]
   );
 
+  // =========================================================
+  // RKA
+  // =========================================================
+
   const addRKA = useCallback(
     (r: Omit<RKA, 'id'>) => {
       setRka(prev => [
@@ -664,6 +962,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [pushAktivitas, touch]
   );
 
+  // =========================================================
+  // KPI
+  // =========================================================
+
   const addKPI = useCallback(
     (k: Omit<KPI, 'id'>) => {
       setKpi(prev => [
@@ -701,6 +1003,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
     [touch]
   );
+
+  // =========================================================
+  // SOP
+  // =========================================================
 
   const addSOP = useCallback(
     (s: Omit<SOP, 'id'>) => {
@@ -740,6 +1046,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [touch]
   );
 
+  // =========================================================
+  // RESET DATA
+  // =========================================================
+
   const resetData = useCallback(() => {
     setAset(asetSeed);
     setKendaraan(kendaraanSeed);
@@ -754,6 +1064,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     touch();
   }, [touch]);
+
+  // =========================================================
+  // TOAST
+  // =========================================================
 
   const pushToast = useCallback(
     (
@@ -785,6 +1099,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  // =========================================================
+  // WIDGET
+  // =========================================================
+
   const toggleWidget = useCallback(
     (key: string) => {
       setWidgets(prev =>
@@ -805,13 +1123,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     []
   );
 
-useEffect(() => {
-  fetchAset();
-  fetchMasterData();
-}, [
-  fetchAset,
-  fetchMasterData,
-]);
+  // =========================================================
+  // INITIAL LOAD
+  // =========================================================
+
+  useEffect(() => {
+    fetchAset();
+    fetchMasterData();
+    fetchKendaraan();
+    fetchDrivers();
+  }, [
+    fetchAset,
+    fetchMasterData,
+    fetchKendaraan,
+    fetchDrivers,
+  ]);
+
+  // =========================================================
+  // CONTEXT VALUE
+  // =========================================================
 
   const value: AppState = {
     aset,
@@ -837,6 +1167,17 @@ useEffect(() => {
     fetchLocations,
 
     kendaraan,
+    kendaraanLoading,
+    kendaraanError,
+    kendaraanSaving,
+    fetchKendaraan,
+
+    drivers,
+    driversLoading,
+    driversError,
+    driversSaving,
+    fetchDrivers,
+
     maintenance,
     pengajuan,
     proyek,
@@ -856,6 +1197,10 @@ useEffect(() => {
     addKendaraan,
     updateKendaraan,
     deleteKendaraan,
+
+    addDriver,
+    updateDriver,
+    deleteDriver,
 
     addMaintenance,
     updateMaintenance,
